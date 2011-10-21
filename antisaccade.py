@@ -14,7 +14,7 @@ class World(object):
     def __init__(self):
         super(World, self).__init__()
         pygame.mouse.set_visible(False)
-        self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+        self.screen = pygame.display.set_mode((1024, 768), 0)
         width,height = self.screen.get_size()
         self.center_x = width/2
         self.center_y = height/2
