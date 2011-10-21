@@ -77,6 +77,7 @@ class World(object):
         pygame.display.flip()
 
     def process_events(self):
+        ret = False
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
@@ -86,7 +87,7 @@ class World(object):
                         print 'Mean:\t%f' % (mean)
                         print 'StdDev:\t%f' % (math.sqrt(sum((x-mean)**2 for x in self.accuracy)/len(self.accuracy)))
                     sys.exit()
-                if self.state == 4:
+                elif self.state == 5:
                     if event.key == pygame.K_LEFT or event.key == pygame.K_UP or event.key == pygame.K_RIGHT:
                         if event.key == pygame.K_LEFT and self.answer == 2:
                             self.accuracy.append(1)
@@ -97,37 +98,36 @@ class World(object):
                         else:
                             self.accuracy.append(0)
                         self.state = 0
-                elif self.state > -1 and self.state < 4:
-                    self.state += 1
-                return True
+                ret = True
             elif event.type == self.EVENT_SHOW_CUE:
                 pygame.time.set_timer(self.EVENT_SHOW_CUE, 0)
-                self.state = 2
+                self.state = 3
                 pygame.time.set_timer(self.EVENT_SHOW_ARROW, 400)
             elif event.type == self.EVENT_SHOW_ARROW:
                 pygame.time.set_timer(self.EVENT_SHOW_ARROW, 0)
-                self.state = 3
+                self.state = 4
                 pygame.time.set_timer(self.EVENT_SHOW_MASK, 150)
             elif event.type == self.EVENT_SHOW_MASK:
                 pygame.time.set_timer(self.EVENT_SHOW_MASK, 0)
-                self.state = 4
+                self.state = 5
+        return ret
 
     def draw_fix(self):
 	if self.eg.eg_data:
-	    pygame.draw.circle(self.worldsurf, (0,228,0), (self.eg.fix_data.fix_x, self.eg.fix_data.fix_y), 5, 0)
+	    pygame.draw.circle(self.worldsurf, (0,228,0), (int(self.eg.fix_data.fix_x), int(self.eg.fix_data.fix_y)), 5, 0)
 
     def draw_world(self):
         self.clear()
-        if self.state == 1:
+        if self.state == 1 or self.state == 2:
             self.draw_fixation_cross()
-        elif self.state == 2:
-            self.draw_cue(self.loc1)
         elif self.state == 3:
-            self.draw_arrow(self.answer, self.size, self.loc2)
+            self.draw_cue(self.loc1)
         elif self.state == 4:
+            self.draw_arrow(self.answer, self.size, self.loc2)
+        elif self.state == 5:
             self.draw_mask(self.loc2)
-	if self.eg:
-	    self.draw_fix()
+	#if self.eg:
+	#    self.draw_fix()
         self.update_world()
 
     def generate_trial(self):
@@ -156,8 +156,22 @@ class World(object):
         while True:
             if self.state == 0:
                 self.generate_trial()
-                self.state = 1
-                pygame.time.set_timer(self.EVENT_SHOW_CUE, self.get_fixation_interval())
+                if self.eg:
+                    self.state = 1
+                else:
+                    self.state = 2
+                    pygame.time.set_timer(self.EVENT_SHOW_CUE, self.get_fixation_interval())
+            elif self.state == 1:
+                if self.eg.fix_data:
+                    xdiff = abs(self.eg.fix_data.fix_x-self.center_x)
+                    ydiff = abs(self.eg.fix_data.fix_y-self.center_y)
+                    if xdiff <= self.center_y / 16 and ydiff <= self.center_y / 16:
+                        self.fix_color = (0,255,0)
+                        if self.eg.fix_data.fix_duration > 10:
+                            self.state = 2
+                            pygame.time.set_timer(self.EVENT_SHOW_CUE, self.get_fixation_interval())
+                else:
+                    self.fix_color = (255,0,0)
             self.clock.tick(30)
             self.draw_world()
             self.process_events()
