@@ -21,8 +21,11 @@ class World(object):
         self.offsets = [self.center_x - width/3, self.center_x + width/3]
         self.worldsurf = self.screen.copy()
         self.worldsurf_rect = self.worldsurf.get_rect()
-        self.obj_width = int(self.center_y / 10)
-        self.arrow_font = pygame.font.Font("ARROW_FONTS.ttf", self.obj_width)
+        obj_width = int(self.center_y / 10)
+        self.obj_widths = [int(math.floor(obj_width*.5)), obj_width, int(math.ceil(obj_width*1.5))]
+        self.arrow_fonts = [pygame.font.Font("ARROW_FONTS.ttf", self.obj_widths[0]),
+                            pygame.font.Font("ARROW_FONTS.ttf", self.obj_widths[1]),
+                            pygame.font.Font("ARROW_FONTS.ttf", self.obj_widths[2])]
         self.arrows = [u'\uf045',u'\uf046',u'\uf047',u'\uf048'] # Right, Up, Left, Down
         self.clock = pygame.time.Clock()
         self.accuracy = []
@@ -34,18 +37,18 @@ class World(object):
     def get_fixation_interval(self):
         return randrange(1500,3500,1)
     
-    def draw_arrow(self, type, x):
-         arrow = self.arrow_font.render(self.arrows[type], True, (255,255,255))
+    def draw_arrow(self, type, size, x):
+         arrow = self.arrow_fonts[size].render(self.arrows[type], True, (255,255,0))
          arrow_rect = arrow.get_rect()
          arrow_rect.centerx = x
          arrow_rect.centery = self.center_y
          self.worldsurf.blit(arrow, arrow_rect)
 
     def draw_mask(self, x):
-        pygame.draw.rect(self.worldsurf, (255,255,255), (x-self.obj_width/2,self.center_y-self.obj_width/2,self.obj_width,self.obj_width),0)
+        pygame.draw.rect(self.worldsurf, (0,0,255), (x-self.obj_widths[2]/2,self.center_y-self.obj_widths[2]/2,self.obj_widths[2],self.obj_widths[2]),0)
         
     def draw_cue(self, x):
-        pygame.draw.rect(self.worldsurf, (255,255,255), (x-self.obj_width/2,self.center_y-self.obj_width/2,self.obj_width,self.obj_width),0)
+        pygame.draw.rect(self.worldsurf, (255,255,0), (x-self.obj_widths[2]/2,self.center_y-self.obj_widths[2]/2,self.obj_widths[2],self.obj_widths[2]),0)
         
     def draw_fixation_cross(self):
         cross_radius = self.center_y / 18
@@ -101,14 +104,15 @@ class World(object):
         elif self.state == 2:
             self.draw_cue(self.loc1)
         elif self.state == 3:
-            self.draw_arrow(self.answer, self.loc2)
+            self.draw_arrow(self.answer, self.size, self.loc2)
         elif self.state == 4:
             self.draw_mask(self.loc2)
         self.update_world()
         
     def generate_trial(self):
         self.loc1, self.loc2 = sample(self.offsets,2)
-        self.answer = choice([2,1,0])    
+        self.answer = choice([2,1,0])
+        self.size = choice([2,1,0])    
     
     def run(self):
         self.state = 0
