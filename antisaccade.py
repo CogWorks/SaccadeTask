@@ -124,18 +124,6 @@ class World(object):
             self.clock.tick(30)
             self.draw_world()
             self.process_events()
-        
-        #time.sleep(self.get_fixation_interval()/1000.0)
-        #self.clear()
-        
-        #time.sleep(0.4)
-        #self.clear()
-        
-        #time.sleep(0.15)
-        #self.clear()
-        
-
-            
 
 def main():
     w = World()
