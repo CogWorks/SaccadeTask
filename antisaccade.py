@@ -24,6 +24,7 @@ class World(object):
         self.obj_width = int(self.center_y / 10)
         self.arrow_font = pygame.font.Font("ARROW_FONTS.ttf", self.obj_width)
         self.arrows = [u'\uf045',u'\uf046',u'\uf047',u'\uf048'] # Right, Up, Left, Down
+        self.clock = pygame.time.Clock()
         
     def get_fixation_interval(self):
         return randrange(1500,3500,1)
@@ -33,60 +34,82 @@ class World(object):
          arrow_rect = arrow.get_rect()
          arrow_rect.centerx = x
          arrow_rect.centery = self.center_y
-         self.screen.blit(arrow, arrow_rect)
-         pygame.display.flip()
+         self.worldsurf.blit(arrow, arrow_rect)
 
     def draw_mask(self, x):
         pygame.draw.rect(self.worldsurf, (255,255,255), (x-self.obj_width/2,self.center_y-self.obj_width/2,self.obj_width,self.obj_width),0)
-        self.screen.blit(self.worldsurf, self.worldsurf_rect)
-        pygame.display.flip()
         
     def draw_cue(self, x):
         pygame.draw.rect(self.worldsurf, (255,255,255), (x-self.obj_width/2,self.center_y-self.obj_width/2,self.obj_width,self.obj_width),0)
-        self.screen.blit(self.worldsurf, self.worldsurf_rect)
-        pygame.display.flip()
         
     def draw_fixation_cross(self):
         cross_radius = self.center_y / 18
         pygame.draw.line(self.worldsurf, (255,0,0), (self.center_x-cross_radius,self.center_y), (self.center_x+cross_radius, self.center_y), 4)
         pygame.draw.line(self.worldsurf, (255,0,0), (self.center_x,self.center_y-cross_radius), (self.center_x, self.center_y+cross_radius), 4)
-        self.screen.blit(self.worldsurf, self.worldsurf_rect)
-        pygame.display.flip()
         
     def clear(self):
         self.worldsurf.fill((0,0,0))
+        
+    def update_world(self):
         self.screen.blit(self.worldsurf, self.worldsurf_rect)
         pygame.display.flip()
         
+    def process_events(self):
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    sys.exit()
+                if self.state == 4:
+                    if event.key == pygame.K_LEFT or event.key == pygame.K_UP or event.key == pygame.K_RIGHT:
+                        if event.key == pygame.K_LEFT and self.answer == 2:
+                            print 'correct'
+                        elif event.key == pygame.K_UP and self.answer == 1:
+                            print 'correct'
+                        elif event.key == pygame.K_RIGHT and self.answer == 0:
+                            print 'correct'
+                        else:
+                            print 'incorrect'
+                        self.state = 0
+                elif self.state < 4:
+                    self.state += 1
+                    
+    def draw_world(self):
+        self.clear()
+        if self.state == 1:
+            self.draw_fixation_cross()
+        elif self.state == 2:
+            self.draw_cue(self.loc1)
+        elif self.state == 3:
+            self.draw_arrow(self.answer, self.loc2)
+        elif self.state == 4:
+            self.draw_mask(self.loc2)
+        self.update_world()
+        
+    def generate_trial(self):
+        self.loc1, self.loc2 = sample(self.offsets,2)
+        self.answer = choice([2,1,0])
+            
     def run(self):
-        loc1, loc2 = sample(self.offsets,2)
-        answer = choice([2,1,0])
-        self.clear()
-        self.draw_fixation_cross()
-        time.sleep(self.get_fixation_interval()/1000.0)
-        self.clear()
-        self.draw_cue(loc1)
-        time.sleep(0.4)
-        self.clear()
-        self.draw_arrow(answer, loc2)
-        time.sleep(0.15)
-        self.clear()
-        self.draw_mask(loc2)
-        cont = True
-        while cont:
-            for event in pygame.event.get():
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_ESCAPE:
-                        sys.exit()
-                    elif event.key == pygame.K_LEFT and answer == 2:
-                        print 'correct'
-                    elif event.key == pygame.K_UP and answer == 1:
-                        print 'correct'
-                    elif event.key == pygame.K_RIGHT and answer == 0:
-                        print 'correct'
-                    else:
-                        print 'incorrect'
-                    cont = False
+        self.state = 0
+        while True:
+            if self.state == 0:
+                self.generate_trial()
+                self.state = 1
+            self.clock.tick(30)
+            self.draw_world()
+            self.process_events()
+        
+        #time.sleep(self.get_fixation_interval()/1000.0)
+        #self.clear()
+        
+        #time.sleep(0.4)
+        #self.clear()
+        
+        #time.sleep(0.15)
+        #self.clear()
+        
+
+            
 
 def main():
     w = World()
