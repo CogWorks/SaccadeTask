@@ -12,7 +12,7 @@ import time
 
 class World(object):
     """Task Environment"""
-    
+
     def __init__(self, args):
         super(World, self).__init__()
         pygame.mouse.set_visible(False)
@@ -34,14 +34,14 @@ class World(object):
         self.arrows = [u'\uf045',u'\uf046',u'\uf047',u'\uf048'] # Right, Up, Left, Down
         self.clock = pygame.time.Clock()
         self.accuracy = []
-        
+
         self.EVENT_SHOW_CUE = pygame.USEREVENT + 1
         self.EVENT_SHOW_ARROW = pygame.USEREVENT + 2
         self.EVENT_SHOW_MASK = pygame.USEREVENT + 3
-        
+
     def get_fixation_interval(self):
         return randrange(1500,3500,1)
-    
+
     def draw_arrow(self, type, size, x):
          arrow = self.arrow_fonts[size].render(self.arrows[type], True, (255,255,0))
          arrow_rect = arrow.get_rect()
@@ -51,22 +51,22 @@ class World(object):
 
     def draw_mask(self, x):
         pygame.draw.rect(self.worldsurf, (0,0,255), (x-self.obj_widths[2]/2,self.center_y-self.obj_widths[2]/2,self.obj_widths[2],self.obj_widths[2]),0)
-        
+
     def draw_cue(self, x):
         pygame.draw.rect(self.worldsurf, (255,255,0), (x-self.obj_widths[2]/2,self.center_y-self.obj_widths[2]/2,self.obj_widths[2],self.obj_widths[2]),0)
-        
+
     def draw_fixation_cross(self):
         cross_radius = self.center_y / 18
         pygame.draw.line(self.worldsurf, (255,0,0), (self.center_x-cross_radius,self.center_y), (self.center_x+cross_radius, self.center_y), 4)
         pygame.draw.line(self.worldsurf, (255,0,0), (self.center_x,self.center_y-cross_radius), (self.center_x, self.center_y+cross_radius), 4)
-        
+
     def clear(self):
         self.worldsurf.fill((0,0,0))
-        
+
     def update_world(self):
         self.screen.blit(self.worldsurf, self.worldsurf_rect)
         pygame.display.flip()
-        
+
     def process_events(self):
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
@@ -102,7 +102,7 @@ class World(object):
             elif event.type == self.EVENT_SHOW_MASK:
                 pygame.time.set_timer(self.EVENT_SHOW_MASK, 0)
                 self.state = 4
-                    
+
     def draw_world(self):
         self.clear()
         if self.state == 1:
@@ -114,12 +114,12 @@ class World(object):
         elif self.state == 4:
             self.draw_mask(self.loc2)
         self.update_world()
-        
+
     def generate_trial(self):
         self.loc1, self.loc2 = sample(self.offsets,2)
         self.answer = choice([2,1,0])
         self.size = choice([2,1,0])
-        
+
     def show_intro(self):
         self.clear()
         intro = pygame.font.Font(None, 24).render("Press Any Key To Begin", True, (255,255,255))
@@ -128,7 +128,7 @@ class World(object):
         intro_rect.centery = self.center_y
         self.worldsurf.blit(intro, intro_rect)
         self.update_world()
-    
+
     def run(self):
         self.state = -1
         self.show_intro()
@@ -149,12 +149,12 @@ def main(args):
         w.run()
 
 if __name__ == '__main__':
-    
+
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('-F', '--fullscreen', action="store_true", dest="fullscreen", help='Run in fullscreen mode.')
     parser.add_argument('-e', '--eyetracker', action="store", dest="eyetracker", help='Use eyetracker.')
     args = parser.parse_args()
-    
+
     if args.eyetracker:
         try:
             socket.inet_aton(args.eyetracker)
@@ -162,7 +162,7 @@ if __name__ == '__main__':
         except socket.error:
             print 'Invalid IP address.'
             sys.exit()
-            
+
     gc.disable()
     pygame.display.init()
     pygame.font.init()
