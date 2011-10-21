@@ -15,6 +15,15 @@ class World(object):
 
     def __init__(self, args):
         super(World, self).__init__()
+        
+        self.eg = None
+        if args.eyetracker:
+            self.eg = EyeGaze()
+            msg = self.eg.connect(args.eyetracker)
+            if msg:
+                print msg
+                sys.exit()
+        
         pygame.mouse.set_visible(False)
         if args.fullscreen:
             self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
@@ -133,6 +142,8 @@ class World(object):
         self.state = -1
         self.show_intro()
         while not self.process_events(): pass
+        if self.eg:
+            eg.calibrate(self.screen)
         self.state = 0
         while True:
             if self.state == 0:
@@ -158,7 +169,7 @@ if __name__ == '__main__':
     if args.eyetracker:
         try:
             socket.inet_aton(args.eyetracker)
-            from eyegaze import *
+            from pycogworks.eyegaze import *
         except socket.error:
             print 'Invalid IP address.'
             sys.exit()
