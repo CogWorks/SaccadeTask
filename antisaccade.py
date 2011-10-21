@@ -25,6 +25,7 @@ class World(object):
         self.arrow_font = pygame.font.Font("ARROW_FONTS.ttf", self.obj_width)
         self.arrows = [u'\uf045',u'\uf046',u'\uf047',u'\uf048'] # Right, Up, Left, Down
         self.clock = pygame.time.Clock()
+        self.accuracy = []
         
     def get_fixation_interval(self):
         return randrange(1500,3500,1)
@@ -58,17 +59,22 @@ class World(object):
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
+                    mean = sum(self.accuracy)/len(self.accuracy)
+                    if len(self.accuracy)>1:
+                        print '~~~~Accuracy~~~~'
+                        print 'Mean:\t%f' % (mean)
+                        print 'StdDev:\t%f' % (math.sqrt(sum((x-mean)**2 for x in self.accuracy)/len(self.accuracy)))
                     sys.exit()
                 if self.state == 4:
                     if event.key == pygame.K_LEFT or event.key == pygame.K_UP or event.key == pygame.K_RIGHT:
                         if event.key == pygame.K_LEFT and self.answer == 2:
-                            print 'correct'
+                            self.accuracy.append(1)
                         elif event.key == pygame.K_UP and self.answer == 1:
-                            print 'correct'
+                            self.accuracy.append(1)
                         elif event.key == pygame.K_RIGHT and self.answer == 0:
-                            print 'correct'
+                            self.accuracy.append(1)
                         else:
-                            print 'incorrect'
+                            self.accuracy.append(0)
                         self.state = 0
                 elif self.state < 4:
                     self.state += 1
