@@ -27,6 +27,10 @@ class World(object):
         self.clock = pygame.time.Clock()
         self.accuracy = []
         
+        self.EVENT_SHOW_CUE = pygame.USEREVENT + 1
+        self.EVENT_SHOW_ARROW = pygame.USEREVENT + 2
+        self.EVENT_SHOW_MASK = pygame.USEREVENT + 3
+        
     def get_fixation_interval(self):
         return randrange(1500,3500,1)
     
@@ -59,8 +63,8 @@ class World(object):
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    mean = sum(self.accuracy)/len(self.accuracy)
                     if len(self.accuracy)>1:
+                        mean = sum(self.accuracy)/len(self.accuracy)
                         print '~~~~Accuracy~~~~'
                         print 'Mean:\t%f' % (mean)
                         print 'StdDev:\t%f' % (math.sqrt(sum((x-mean)**2 for x in self.accuracy)/len(self.accuracy)))
@@ -78,6 +82,17 @@ class World(object):
                         self.state = 0
                 elif self.state < 4:
                     self.state += 1
+            elif event.type == self.EVENT_SHOW_CUE:
+                pygame.time.set_timer(self.EVENT_SHOW_CUE, 0)
+                self.state = 2
+                pygame.time.set_timer(self.EVENT_SHOW_ARROW, 400)
+            elif event.type == self.EVENT_SHOW_ARROW:
+                pygame.time.set_timer(self.EVENT_SHOW_ARROW, 0)
+                self.state = 3
+                pygame.time.set_timer(self.EVENT_SHOW_MASK, 150)
+            elif event.type == self.EVENT_SHOW_MASK:
+                pygame.time.set_timer(self.EVENT_SHOW_MASK, 0)
+                self.state = 4
                     
     def draw_world(self):
         self.clear()
@@ -93,14 +108,15 @@ class World(object):
         
     def generate_trial(self):
         self.loc1, self.loc2 = sample(self.offsets,2)
-        self.answer = choice([2,1,0])
-            
+        self.answer = choice([2,1,0])    
+    
     def run(self):
         self.state = 0
         while True:
             if self.state == 0:
                 self.generate_trial()
                 self.state = 1
+                pygame.time.set_timer(self.EVENT_SHOW_CUE, self.get_fixation_interval())
             self.clock.tick(30)
             self.draw_world()
             self.process_events()
