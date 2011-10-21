@@ -2,6 +2,7 @@
 
 from __future__ import division
 from random import randrange, choice, sample
+import socket
 import argparse
 import pygame
 import math
@@ -87,8 +88,9 @@ class World(object):
                         else:
                             self.accuracy.append(0)
                         self.state = 0
-                elif self.state < 4:
+                elif self.state > -1 and self.state < 4:
                     self.state += 1
+                return True
             elif event.type == self.EVENT_SHOW_CUE:
                 pygame.time.set_timer(self.EVENT_SHOW_CUE, 0)
                 self.state = 2
@@ -116,9 +118,21 @@ class World(object):
     def generate_trial(self):
         self.loc1, self.loc2 = sample(self.offsets,2)
         self.answer = choice([2,1,0])
-        self.size = choice([2,1,0])    
+        self.size = choice([2,1,0])
+        
+    def show_intro(self):
+        self.clear()
+        intro = pygame.font.Font(None, 24).render("Press Any Key To Begin", True, (255,255,255))
+        intro_rect = intro.get_rect()
+        intro_rect.centerx = self.center_x
+        intro_rect.centery = self.center_y
+        self.worldsurf.blit(intro, intro_rect)
+        self.update_world()
     
     def run(self):
+        self.state = -1
+        self.show_intro()
+        while not self.process_events(): pass
         self.state = 0
         while True:
             if self.state == 0:
@@ -141,6 +155,14 @@ if __name__ == '__main__':
     parser.add_argument('-e', '--eyetracker', action="store", dest="eyetracker", help='Use eyetracker.')
     args = parser.parse_args()
     
+    if args.eyetracker:
+        try:
+            socket.inet_aton(args.eyetracker)
+            from eyegaze import *
+        except socket.error:
+            print 'Invalid IP address.'
+            sys.exit()
+            
     gc.disable()
     pygame.display.init()
     pygame.font.init()
