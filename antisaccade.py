@@ -2,6 +2,7 @@
 
 from __future__ import division
 from random import randrange, choice, sample
+import argparse
 import pygame
 import math
 import gc
@@ -11,10 +12,13 @@ import time
 class World(object):
     """Task Environment"""
     
-    def __init__(self):
+    def __init__(self, args):
         super(World, self).__init__()
         pygame.mouse.set_visible(False)
-        self.screen = pygame.display.set_mode((1024, 768), 0)
+        if args.fullscreen:
+            self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+        else:
+            self.screen = pygame.display.set_mode((1024, 768), 0)
         width,height = self.screen.get_size()
         self.center_x = width/2
         self.center_y = height/2
@@ -125,13 +129,19 @@ class World(object):
             self.draw_world()
             self.process_events()
 
-def main():
-    w = World()
+def main(args):
+    w = World(args)
     while True:
         w.run()
 
 if __name__ == '__main__':
+    
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('-F', '--fullscreen', action="store_true", dest="fullscreen", help='Run in fullscreen mode.')
+    parser.add_argument('-e', '--eyetracker', action="store", dest="eyetracker", help='Use eyetracker.')
+    args = parser.parse_args()
+    
     gc.disable()
     pygame.display.init()
     pygame.font.init()
-    main()
+    main(args)
