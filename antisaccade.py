@@ -66,8 +66,8 @@ class World(object):
 
     def draw_fixation_cross(self):
         cross_radius = self.center_y / 18
-        pygame.draw.line(self.worldsurf, (255,0,0), (self.center_x-cross_radius,self.center_y), (self.center_x+cross_radius, self.center_y), 4)
-        pygame.draw.line(self.worldsurf, (255,0,0), (self.center_x,self.center_y-cross_radius), (self.center_x, self.center_y+cross_radius), 4)
+        pygame.draw.line(self.worldsurf, self.fix_color, (self.center_x-cross_radius,self.center_y), (self.center_x+cross_radius, self.center_y), 4)
+        pygame.draw.line(self.worldsurf, self.fix_color, (self.center_x,self.center_y-cross_radius), (self.center_x, self.center_y+cross_radius), 4)
 
     def clear(self):
         self.worldsurf.fill((0,0,0))
@@ -112,6 +112,10 @@ class World(object):
                 pygame.time.set_timer(self.EVENT_SHOW_MASK, 0)
                 self.state = 4
 
+    def draw_fix(self):
+	if self.eg.eg_data:
+	    pygame.draw.circle(self.worldsurf, (0,228,0), (self.eg.fix_data.fix_x, self.eg.fix_data.fix_y), 5, 0)
+
     def draw_world(self):
         self.clear()
         if self.state == 1:
@@ -122,12 +126,15 @@ class World(object):
             self.draw_arrow(self.answer, self.size, self.loc2)
         elif self.state == 4:
             self.draw_mask(self.loc2)
+	if self.eg:
+	    self.draw_fix()
         self.update_world()
 
     def generate_trial(self):
         self.loc1, self.loc2 = sample(self.offsets,2)
         self.answer = choice([2,1,0])
         self.size = choice([2,1,0])
+	self.fix_color = (255,0,0)
 
     def show_intro(self):
         self.clear()
@@ -143,7 +150,8 @@ class World(object):
         self.show_intro()
         while not self.process_events(): pass
         if self.eg:
-            eg.calibrate(self.screen)
+            self.eg.calibrate(self.screen)  
+	    self.eg.data_start()
         self.state = 0
         while True:
             if self.state == 0:
