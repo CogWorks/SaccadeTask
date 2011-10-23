@@ -52,17 +52,17 @@ class World(object):
         return randrange(1500,3500,1)
 
     def draw_arrow(self, type, size, x):
-         arrow = self.arrow_fonts[size].render(self.arrows[type], True, (255,255,0))
+         arrow = self.arrow_fonts[size].render(self.arrows[type], True, (255,255,255))
          arrow_rect = arrow.get_rect()
          arrow_rect.centerx = x
          arrow_rect.centery = self.center_y
          self.worldsurf.blit(arrow, arrow_rect)
 
     def draw_mask(self, x):
-        pygame.draw.rect(self.worldsurf, (0,0,255), (x-self.obj_widths[2]*.6,self.center_y-self.obj_widths[2]*.6,self.obj_widths[2]*1.2,self.obj_widths[2]*1.2),0)
+        pygame.draw.rect(self.worldsurf, (128,128,128), (x-self.obj_widths[2]*.6,self.center_y-self.obj_widths[2]*.6,self.obj_widths[2]*1.2,self.obj_widths[2]*1.2),0)
 
     def draw_cue(self, x):
-        pygame.draw.rect(self.worldsurf, (255,255,0), (x-self.obj_widths[2]/2,self.center_y-self.obj_widths[2]/2,self.obj_widths[2],self.obj_widths[2]),0)
+        pygame.draw.rect(self.worldsurf, (255,255,255), (x-self.obj_widths[2]/2,self.center_y-self.obj_widths[2]/2,self.obj_widths[2],self.obj_widths[2]),0)
 
     def draw_fixation_cross(self):
         cross_radius = self.center_y / 18
