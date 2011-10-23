@@ -35,12 +35,12 @@ class World(object):
         self.offsets = [self.center_x - width/3, self.center_x + width/3]
         self.worldsurf = self.screen.copy()
         self.worldsurf_rect = self.worldsurf.get_rect()
-        obj_width = int(self.center_y / 10)
+        obj_width = int(self.center_y / 12)
         self.obj_widths = [int(math.floor(obj_width*.5)), obj_width, int(math.ceil(obj_width*1.5))]
-        self.arrow_fonts = [pygame.font.Font("ARROW_FONTS.ttf", self.obj_widths[0]),
-                            pygame.font.Font("ARROW_FONTS.ttf", self.obj_widths[1]),
-                            pygame.font.Font("ARROW_FONTS.ttf", self.obj_widths[2])]
-        self.arrows = [u'\uf045',u'\uf046',u'\uf047',u'\uf048'] # Right, Up, Left, Down
+        self.arrow_fonts = [pygame.font.Font("DTPDingbats.ttf", self.obj_widths[0]),
+                            pygame.font.Font("DTPDingbats.ttf", self.obj_widths[1]),
+                            pygame.font.Font("DTPDingbats.ttf", self.obj_widths[2])]
+        self.arrows = ['C','B','D','E'] # Right, Up, Left, Down
         self.clock = pygame.time.Clock()
         self.accuracy = []
 
@@ -59,7 +59,7 @@ class World(object):
          self.worldsurf.blit(arrow, arrow_rect)
 
     def draw_mask(self, x):
-        pygame.draw.rect(self.worldsurf, (0,0,255), (x-self.obj_widths[2]/2,self.center_y-self.obj_widths[2]/2,self.obj_widths[2],self.obj_widths[2]),0)
+        pygame.draw.rect(self.worldsurf, (0,0,255), (x-self.obj_widths[2]*.6,self.center_y-self.obj_widths[2]*.6,self.obj_widths[2]*1.2,self.obj_widths[2]*1.2),0)
 
     def draw_cue(self, x):
         pygame.draw.rect(self.worldsurf, (255,255,0), (x-self.obj_widths[2]/2,self.center_y-self.obj_widths[2]/2,self.obj_widths[2],self.obj_widths[2]),0)
