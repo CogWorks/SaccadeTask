@@ -192,7 +192,7 @@ class World(object):
                     ydiff = abs(self.eg.fix_data.fix_y-self.center_y)
                     if xdiff <= self.center_y / 16 and ydiff <= self.center_y / 16:
                         self.fix_color = (0,255,0)
-                        if self.eg.fix_data.fix_duration > 10:
+                        if self.eg.fix_data.fix_duration > 25: # About 300ms
                             self.state = 2
                             pygame.time.set_timer(self.EVENT_SHOW_CUE, self.get_fixation_interval())
                 else:
