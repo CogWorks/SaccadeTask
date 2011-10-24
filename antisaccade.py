@@ -50,6 +50,9 @@ class World(object):
         self.arrow_text = ['>','^','<']
         self.clock = pygame.time.Clock()
         self.accuracy = []
+        self.mode = 'anti'
+        if self.args.prosaccade:
+            self.mode = 'pro'
 
         self.EVENT_SHOW_CUE = pygame.USEREVENT + 1
         self.EVENT_SHOW_ARROW = pygame.USEREVENT + 2
@@ -110,7 +113,7 @@ class World(object):
                         cue_side = 'left'
                         if self.loc1 > self.center_x:
                             cue_side = 'right'
-                        result = [self.center_x, self.center_y, self.offset, self.obj_widths[self.size], cue_side, self.mask_time-self.target_time, self.arrow_text[self.answer]]
+                        result = [self.mode, self.center_x, self.center_y, self.offset, self.obj_widths[self.size], cue_side, self.mask_time-self.target_time, self.arrow_text[self.answer]]
                         if event.key == pygame.K_LEFT:
                             result.append('<')
                             if self.answer == 2:
@@ -131,7 +134,7 @@ class World(object):
                                 result.append(0)
                         result.append(rt)
                         self.state = 0
-                        self.output.write("%d\t%d\t%d\t%d\t%s\t%d\t%s\t%s\t%d\t%d\n" % tuple(result))
+                        self.output.write("%s\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t%s\t%d\t%d\n" % tuple(result))
                         self.accuracy.append(result)
                 ret = True
             elif event.type == self.EVENT_SHOW_CUE:
@@ -169,6 +172,8 @@ class World(object):
 
     def generate_trial(self):
         self.loc1, self.loc2 = sample(self.offsets,2)
+        if self.args.prosaccade:
+            self.loc2 = self.loc1
         self.answer = choice([2,1,0])
         self.size = choice([2,1,0])
         self.fix_color = (255,255,0)
@@ -195,9 +200,9 @@ class World(object):
 	    self.eg.data_start()
         self.state = 0
         if self.eg:
-            self.output.write('center_x\tcenter_y\toffset\tcue_size\tcue_side\ttarget_time\ttarget\tresponse\tcorrect\trt\t1st_saccade_direction\t1st_saccade_latency\n')
+            self.output.write('mode\tcenter_x\tcenter_y\toffset\tcue_size\tcue_side\ttarget_time\ttarget\tresponse\tcorrect\trt\t1st_saccade_direction\t1st_saccade_latency\n')
         else:
-            self.output.write('center_x\tcenter_y\toffset\tcue_size\tcue_side\ttarget_time\ttarget\tresponse\tcorrect\trt\n')
+            self.output.write('mode\tcenter_x\tcenter_y\toffset\tcue_size\tcue_side\ttarget_time\ttarget\tresponse\tcorrect\trt\n')
         while True:
             if self.state == 0:
                 self.generate_trial()
@@ -251,7 +256,8 @@ if __name__ == '__main__':
     parser.add_argument('-F', '--fullscreen', action="store_true", dest="fullscreen", help='Run in fullscreen mode.')
     parser.add_argument('-l', '--log', action="store", dest="logfile", help='Pipe results to file instead of stdout.')
     parser.add_argument('-a', '--arrowsize', action="store", dest="arrowsize", default=0.07, help='Arrow size in terms of fraction of screen height.')
-    
+    parser.add_argument('-p', '--pro', action="store_true", dest="prosaccade", help='Run in pro-saccade mode instead of anti-saccade mode.')
+
     try:
         from pycogworks.eyegaze import *
         parser.add_argument('-e', '--eyetracker', action="store", dest="eyetracker", help='Use eyetracker.')
