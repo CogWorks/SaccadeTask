@@ -97,7 +97,7 @@ class World(object):
                         cue_side = 'left'
                         if self.loc1 > self.center_x:
                             cue_side = 'right'
-                        result = [self.center_x, self.center_y, self.offset, self.obj_widths[self.size], cue_side, self.arrow_text[self.answer]]
+                        result = [self.center_x, self.center_y, self.offset, self.obj_widths[self.size], cue_side, self.mask_time-self.target_time, self.arrow_text[self.answer]]
                         if event.key == pygame.K_LEFT:
                             result.append('<')
                             if self.answer == 2:
@@ -118,7 +118,7 @@ class World(object):
                                 result.append(0)
                         result.append(rt)
                         self.state = 0
-                        self.output.write("%d\t%d\t%d\t%d\t%s\t%s\t%s\t%d\t%d\n" % tuple(result))
+                        self.output.write("%d\t%d\t%d\t%d\t%s\t%d\t%s\t%s\t%d\t%d\n" % tuple(result))
                         self.accuracy.append(result)
                 ret = True
             elif event.type == self.EVENT_SHOW_CUE:
@@ -133,6 +133,7 @@ class World(object):
             elif event.type == self.EVENT_SHOW_MASK:
                 pygame.time.set_timer(self.EVENT_SHOW_MASK, 0)
                 self.state = 5
+		self.mask_time = pygame.time.get_ticks()
         return ret
 
     def draw_fix(self):
@@ -181,9 +182,9 @@ class World(object):
 	    self.eg.data_start()
         self.state = 0
         if self.eg:
-            self.output.write('center_x\tcenter_y\toffset\tcue_size\tcue_side\ttarget\tresponse\tcorrect\trt\t1st_saccade_direction\t1st_saccade_latency\n')
+            self.output.write('center_x\tcenter_y\toffset\tcue_size\tcue_side\ttarget_time\ttarget\tresponse\tcorrect\trt\t1st_saccade_direction\t1st_saccade_latency\n')
         else:
-            self.output.write('center_x\tcenter_y\toffset\tcue_size\tcue_side\ttarget\tresponse\tcorrect\trt\n')
+            self.output.write('center_x\tcenter_y\toffset\tcue_size\tcue_side\ttarget_time\ttarget\tresponse\tcorrect\trt\n')
         while True:
             if self.state == 0:
                 self.generate_trial()
