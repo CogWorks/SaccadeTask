@@ -154,7 +154,7 @@ class World(object):
         self.loc1, self.loc2 = sample(self.offsets,2)
         self.answer = choice([2,1,0])
         self.size = choice([2,1,0])
-        self.fix_color = (255,0,0)
+        self.fix_color = (255,255,0)
 
     def show_intro(self):
 
@@ -196,6 +196,20 @@ class World(object):
                             self.state = 2
                             pygame.time.set_timer(self.EVENT_SHOW_CUE, self.get_fixation_interval())
                 else:
+                    self.fix_color = (255,255,0)
+            elif self.state == 2 and self.eg:
+                if self.eg.fix_data:
+                    xdiff = abs(self.eg.fix_data.fix_x-self.center_x)
+                    ydiff = abs(self.eg.fix_data.fix_y-self.center_y)
+                    if xdiff > self.center_y / 16 or ydiff > self.center_y / 16:
+                        sys.stderr.write('False start, resetting trial.')
+                        pygame.time.set_timer(self.EVENT_SHOW_CUE, 0)
+                        self.state = 1
+                        self.fix_color = (255,0,0)
+                elif not self.eg.eg_data.gaze_found:
+                    sys.stderr.write('Lost gaze, resetting trial.')
+                    pygame.time.set_timer(self.EVENT_SHOW_CUE, 0)
+                    self.state = 1
                     self.fix_color = (255,0,0)
             self.clock.tick(30)
             self.draw_world()
