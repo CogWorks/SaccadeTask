@@ -39,8 +39,9 @@ class World(object):
         self.worldsurf = self.screen.copy()
         self.worldsurf_rect = self.worldsurf.get_rect()
         obj_width = int(self.center_y * self.args.arrowsize)
-        self.fontname = 'DejaVuSansMono-Bold.ttf'
+        self.fontname = 'DejaVuSansMono.ttf'
         self.obj_widths = [obj_width, int(math.ceil(obj_width*1.5)), int(math.ceil(obj_width*2))]
+        self.mode_font = pygame.font.Font(self.fontname, int(self.obj_widths[0]*self.args.showmode))
         self.arrow_font = pygame.font.Font(self.fontname, self.obj_widths[0])
         self.mask_font = pygame.font.Font(self.fontname, int(self.obj_widths[2]*1.5))
         self.cue_fonts = [pygame.font.Font(self.fontname, self.obj_widths[0]),
@@ -91,6 +92,15 @@ class World(object):
         cross_radius = self.center_y / 18
         pygame.draw.line(self.worldsurf, self.fix_color, (self.center_x-cross_radius,self.center_y), (self.center_x+cross_radius, self.center_y), 4)
         pygame.draw.line(self.worldsurf, self.fix_color, (self.center_x,self.center_y-cross_radius), (self.center_x, self.center_y+cross_radius), 4)
+        if self.args.showmode:
+            mtext = ' A '
+            if self.args.prosaccade:
+                mtext = ' P '
+            mode = self.mode_font.render(mtext, True, self.fix_color, (0,0,0))
+            mode_rect = mode.get_rect()
+            mode_rect.centerx = self.center_x
+            mode_rect.centery = self.center_y
+            self.worldsurf.blit(mode, mode_rect)
 
     def clear(self):
         self.worldsurf.fill((0,0,0))
@@ -256,9 +266,10 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('-F', '--fullscreen', action="store_true", dest="fullscreen", help='Run in fullscreen mode.')
-    parser.add_argument('-l', '--log', action="store", dest="logfile", help='Pipe results to file instead of stdout.')
+    parser.add_argument('-L', '--log', action="store", dest="logfile", help='Pipe results to file instead of stdout.')
     parser.add_argument('-a', '--arrowsize', action="store", dest="arrowsize", default=0.07, help='Arrow size in terms of fraction of screen height.')
     parser.add_argument('-p', '--pro', action="store_true", dest="prosaccade", help='Run in pro-saccade mode instead of anti-saccade mode.')
+    parser.add_argument('-s', '--showmode', action="store", dest="showmode", type=float, default=0.0, help='Show mode in fixation cross.')
 
     try:
         from pycogworks.eyegaze import *
