@@ -93,6 +93,7 @@ class World(object):
                     self.cleanup()
                 elif self.state == 5:
                     if event.key == pygame.K_LEFT or event.key == pygame.K_UP or event.key == pygame.K_RIGHT:
+                        rt = pygame.time.get_ticks() - self.target_time
                         cue_side = 'left'
                         if self.loc1 > self.center_x:
                             cue_side = 'right'
@@ -115,8 +116,9 @@ class World(object):
                                 result.append(1)
                             else:
                                 result.append(0)
+                        result.append(rt)
                         self.state = 0
-                        self.output.write("%d\t%d\t%d\t%d\t%s\t%s\t%s\t%d\n" % tuple(result))
+                        self.output.write("%d\t%d\t%d\t%d\t%s\t%s\t%s\t%d\t%d\n" % tuple(result))
                         self.accuracy.append(result)
                 ret = True
             elif event.type == self.EVENT_SHOW_CUE:
@@ -127,6 +129,7 @@ class World(object):
                 pygame.time.set_timer(self.EVENT_SHOW_ARROW, 0)
                 self.state = 4
                 pygame.time.set_timer(self.EVENT_SHOW_MASK, 150)
+                self.target_time = pygame.time.get_ticks()
             elif event.type == self.EVENT_SHOW_MASK:
                 pygame.time.set_timer(self.EVENT_SHOW_MASK, 0)
                 self.state = 5
@@ -177,7 +180,10 @@ class World(object):
             self.eg.calibrate(self.screen)  
 	    self.eg.data_start()
         self.state = 0
-        self.output.write('center_x\tcenter_y\toffset\tcue_size\tcue_side\ttarget\tresponse\tcorrect\n')
+        if self.eg:
+            self.output.write('center_x\tcenter_y\toffset\tcue_size\tcue_side\ttarget\tresponse\tcorrect\trt\t1st_saccade_direction\t1st_saccade_latency\n')
+        else:
+            self.output.write('center_x\tcenter_y\toffset\tcue_size\tcue_side\ttarget\tresponse\tcorrect\trt\n')
         while True:
             if self.state == 0:
                 self.generate_trial()
@@ -212,8 +218,8 @@ class World(object):
                     self.state = 1
                     self.fix_color = (255,0,0)
             self.clock.tick(30)
-            self.draw_world()
             self.process_events()
+            self.draw_world()
 
     def cleanup(self):
         if self.args.logfile:
