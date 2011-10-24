@@ -255,6 +255,8 @@ class World(object):
     def cleanup(self):
         if self.args.logfile:
             self.output.close()
+        if self.eg:
+            self.eg.disconnect()
         sys.exit()
 
 def main(args):
