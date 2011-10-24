@@ -237,15 +237,19 @@ if __name__ == '__main__':
     parser.add_argument('-F', '--fullscreen', action="store_true", dest="fullscreen", help='Run in fullscreen mode.')
     parser.add_argument('-l', '--log', action="store", dest="logfile", help='Pipe results to file instead of stdout.')
     parser.add_argument('-a', '--arrowsize', action="store", dest="arrowsize", default=0.07, help='Arrow size in terms of fraction of screen height.')
-    parser.add_argument('-e', '--eyetracker', action="store", dest="eyetracker", help='Use eyetracker.')
-    parser.add_argument('-f', '--fixation', action="store_true", dest="showfixation", help='Overlay fixation.')
+    
+    try:
+        from pycogworks.eyegaze import *
+        parser.add_argument('-e', '--eyetracker', action="store", dest="eyetracker", help='Use eyetracker.')
+        parser.add_argument('-f', '--fixation', action="store_true", dest="showfixation", help='Overlay fixation.')
+    except ImportError:
+        pass
 
     args = parser.parse_args()
 
     if args.eyetracker:
         try:
             socket.inet_aton(args.eyetracker)
-            from pycogworks.eyegaze import *
         except socket.error:
             print 'Error: Invalid IP address.'
             sys.exit()
