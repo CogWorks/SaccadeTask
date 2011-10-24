@@ -113,7 +113,7 @@ class World(object):
                         cue_side = 'left'
                         if self.loc1 > self.center_x:
                             cue_side = 'right'
-                        result = [self.mode, self.center_x, self.center_y, self.offset, self.obj_widths[self.size], cue_side, self.mask_time-self.target_time, self.arrow_text[self.answer]]
+                        result = [self.mode, self.center_x, self.center_y, self.offset, self.fix_delay, self.obj_widths[self.size], cue_side, self.mask_time-self.target_time, self.arrow_text[self.answer]]
                         if event.key == pygame.K_LEFT:
                             result.append('<')
                             if self.answer == 2:
@@ -134,7 +134,7 @@ class World(object):
                                 result.append(0)
                         result.append(rt)
                         self.state = 0
-                        self.output.write("%s\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t%s\t%d\t%d\n" % tuple(result))
+                        self.output.write("%s\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t%s\t%d\t%d\n" % tuple(result))
                         self.accuracy.append(result)
                 ret = True
             elif event.type == self.EVENT_SHOW_CUE:
@@ -200,9 +200,9 @@ class World(object):
 	    self.eg.data_start()
         self.state = 0
         if self.eg:
-            self.output.write('mode\tcenter_x\tcenter_y\toffset\tcue_size\tcue_side\ttarget_time\ttarget\tresponse\tcorrect\trt\t1st_saccade_direction\t1st_saccade_latency\n')
+            self.output.write('mode\tcenter_x\tcenter_y\toffset\tfix_delay\tcue_size\tcue_side\ttarget_time\ttarget\tresponse\tcorrect\trt\t1st_saccade_direction\t1st_saccade_latency\n')
         else:
-            self.output.write('mode\tcenter_x\tcenter_y\toffset\tcue_size\tcue_side\ttarget_time\ttarget\tresponse\tcorrect\trt\n')
+            self.output.write('mode\tcenter_x\tcenter_y\toffset\tfix_delay\tcue_size\tcue_side\ttarget_time\ttarget\tresponse\tcorrect\trt\n')
         while True:
             if self.state == 0:
                 self.generate_trial()
@@ -210,7 +210,8 @@ class World(object):
                     self.state = 1
                 else:
                     self.state = 2
-                    pygame.time.set_timer(self.EVENT_SHOW_CUE, self.get_fixation_interval())
+                    self.fix_delay = self.get_fixation_interval()
+                    pygame.time.set_timer(self.EVENT_SHOW_CUE, self.fix_delay)
             elif self.state == 1:
                 if self.eg.fix_data:
                     xdiff = abs(self.eg.fix_data.fix_x-self.center_x)
@@ -219,7 +220,8 @@ class World(object):
                         self.fix_color = (0,255,0)
                         if self.eg.fix_data.fix_duration > 25: # About 300ms
                             self.state = 2
-                            pygame.time.set_timer(self.EVENT_SHOW_CUE, self.get_fixation_interval())
+                            self.fix_delay = self.get_fixation_interval()
+                            pygame.time.set_timer(self.EVENT_SHOW_CUE, self.fix_delay)
                 else:
                     self.fix_color = (255,255,0)
             elif self.state == 2 and self.eg:
