@@ -38,7 +38,7 @@ class World(object):
         self.offsets = [int(self.center_x - self.offset), int(self.center_x + self.offset)]
         self.worldsurf = self.screen.copy()
         self.worldsurf_rect = self.worldsurf.get_rect()
-        obj_width = int(self.center_y / 14)
+        obj_width = int(self.center_y * self.args.arrowsize)
         self.obj_widths = [obj_width, int(math.ceil(obj_width*1.5)), int(math.ceil(obj_width*2))]
         self.arrow_font = pygame.font.Font("DTPDingbats.ttf", self.obj_widths[0])
         self.arrows = ['C','B','D']
@@ -236,6 +236,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('-F', '--fullscreen', action="store_true", dest="fullscreen", help='Run in fullscreen mode.')
     parser.add_argument('-l', '--log', action="store", dest="logfile", help='Pipe results to file instead of stdout.')
+    parser.add_argument('-a', '--arrowsize', action="store", dest="arrowsize", default=0.07, help='Arrow size in terms of fraction of screen height.')
     parser.add_argument('-e', '--eyetracker', action="store", dest="eyetracker", help='Use eyetracker.')
     parser.add_argument('-f', '--fixation', action="store_true", dest="showfixation", help='Overlay fixation.')
 
