@@ -39,9 +39,14 @@ class World(object):
         self.worldsurf = self.screen.copy()
         self.worldsurf_rect = self.worldsurf.get_rect()
         obj_width = int(self.center_y * self.args.arrowsize)
+        self.fontname = 'DejaVuSansMono-Bold.ttf'
         self.obj_widths = [obj_width, int(math.ceil(obj_width*1.5)), int(math.ceil(obj_width*2))]
-        self.arrow_font = pygame.font.Font("DTPDingbats.ttf", self.obj_widths[0])
-        self.arrows = ['C','B','D']
+        self.arrow_font = pygame.font.Font(self.fontname, self.obj_widths[0])
+        self.mask_font = pygame.font.Font(self.fontname, int(self.obj_widths[2]*1.5))
+        self.cue_fonts = [pygame.font.Font(self.fontname, self.obj_widths[0]),
+                          pygame.font.Font(self.fontname, self.obj_widths[1]),
+                          pygame.font.Font(self.fontname, self.obj_widths[2])]
+        self.arrows = [u'\u25B6',u'\u25B2',u'\u25C0']
         self.arrow_text = ['>','^','<']
         self.clock = pygame.time.Clock()
         self.accuracy = []
@@ -66,10 +71,18 @@ class World(object):
          self.worldsurf.blit(arrow, arrow_rect)
 
     def draw_mask(self, x):
-        pygame.draw.rect(self.worldsurf, (128,128,128), (x-self.obj_widths[2]*.6,self.center_y-self.obj_widths[2]*.6,self.obj_widths[2]*1.2,self.obj_widths[2]*1.2),0)
+        mask = self.mask_font.render(u'\u25A9', True, (128,128,128))
+        mask_rect = mask.get_rect()
+        mask_rect.centerx = x
+        mask_rect.centery = self.center_y
+        self.worldsurf.blit(mask, mask_rect)
 
     def draw_cue(self, x, size):
-        pygame.draw.rect(self.worldsurf, (255,255,255), (x-size/2,self.center_y-size/2,size,size),0)
+        cue = self.cue_fonts[size].render(u'\u25AA', True, (255,255,255))
+        cue_rect = cue.get_rect()
+        cue_rect.centerx = x
+        cue_rect.centery = self.center_y
+        self.worldsurf.blit(cue, cue_rect)
 
     def draw_fixation_cross(self):
         cross_radius = self.center_y / 18
@@ -145,7 +158,7 @@ class World(object):
         if self.state == 1 or self.state == 2:
             self.draw_fixation_cross()
         elif self.state == 3:
-            self.draw_cue(self.loc1, self.obj_widths[self.size])
+            self.draw_cue(self.loc1, self.size)
         elif self.state == 4:
             self.draw_arrow(self.answer, self.obj_widths[0], self.loc2)
         elif self.state == 5:
