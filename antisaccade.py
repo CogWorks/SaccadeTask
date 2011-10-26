@@ -108,7 +108,15 @@ class World(object):
         pygame.display.flip()
         
     def fixation_callback(self, eg_data):
-        print eg_data.timestamp, eg_data.gaze_found, eg_data.eye_motion_state, eg_data.fix_x, eg_data.fix_y
+        if self.cue_time > 0:
+            if eg_data.eye_motion_state == 2 and self.saccade_latency == 0:
+                self.saccade_latency = pygame.time.get_ticks() - self.cue_time
+                print eg_data.timestamp, eg_data.fix_x, eg_data.fix_y
+            elif self.saccade_latency > 0 and self.saccade_direction == 'none':
+                if eg_data.gaze_x < self.center_x:
+                    self.saccade_direction = 'left'
+                else:
+                    self.saccade_direction = 'right'
 
     def process_events(self):
         ret = False
@@ -145,13 +153,19 @@ class World(object):
                                 result.append(0)
                         result.append(rt)
                         self.state = 0
-                        self.output.write("%s\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t%s\t%d\t%d\n" % tuple(result))
+                        if self.eg:
+                            result.append(self.saccade_direction)
+                            result.append(self.saccade_latency)
+                            self.output.write("%s\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t%s\t%d\t%d\t%s\t%d\n" % tuple(result))
+                        else:
+                            self.output.write("%s\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t%s\t%d\t%d\n" % tuple(result))
                         self.accuracy.append(result)
                 ret = True
             elif event.type == self.EVENT_SHOW_CUE:
                 pygame.time.set_timer(self.EVENT_SHOW_CUE, 0)
                 self.state = 3
                 pygame.time.set_timer(self.EVENT_SHOW_ARROW, 400)
+                self.cue_time = pygame.time.get_ticks()
             elif event.type == self.EVENT_SHOW_ARROW:
                 pygame.time.set_timer(self.EVENT_SHOW_ARROW, 0)
                 self.state = 4
@@ -183,8 +197,12 @@ class World(object):
 
     def generate_trial(self):
         self.loc1, self.loc2 = sample(self.offsets,2)
+        self.mode_text = 'anti'
+        self.saccade_latency = 0
+        self.saccade_direction = 'none'
         if self.args.mode == 'pro':
             self.loc2 = self.loc1
+            self.mode_text = 'anti'
         elif self.args.mode == 'random':
             self.loc2 = sample(self.offsets,1)[0]
             if self.loc1 == self.loc2:
@@ -194,6 +212,8 @@ class World(object):
         self.answer = choice([2,1,0])
         self.size = choice([2,1,0])
         self.fix_color = (255,255,0)
+        self.cue_time = 0
+        self.target_time = 0
 
     def show_intro(self):
 
