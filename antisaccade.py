@@ -61,6 +61,14 @@ class World(object):
             self.output = open(args.logfile, 'w')
         else:
             self.output = sys.stdout
+        
+        if self.eg:
+            self.eg_output = open('eyegaze.log', 'w')
+            self.eg_output.write("trial\tmode\ttime\tgaze_x\tgaze_y\n")
+            
+        self.mode_text = ''
+        
+        self.trial = 0
 
     def get_fixation_interval(self):
         return randrange(1500,3500,1)
@@ -108,6 +116,7 @@ class World(object):
         pygame.display.flip()
         
     def fixation_callback(self, eg_data):
+        self.eg_output.write("%d\t%s\t%f\t%d\t%d\n" %(self.trial,self.mode_text,eg_data.timestamp,int(eg_data.gaze_x),int(eg_data.gaze_y)))
         if self.cue_time > 0:
             if eg_data.eye_motion_state == 2 and self.saccade_latency == 0:
                 self.saccade_latency = pygame.time.get_ticks() - self.cue_time
@@ -214,6 +223,7 @@ class World(object):
         self.fix_color = (255,255,0)
         self.cue_time = 0
         self.target_time = 0
+        self.trial += 1
 
     def show_intro(self):
 
@@ -283,6 +293,7 @@ class World(object):
         if self.args.logfile:
             self.output.close()
         if self.eg:
+            self.eg_output.close()
             self.eg.disconnect()
         sys.exit()
 
