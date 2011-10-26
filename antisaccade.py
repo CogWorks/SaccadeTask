@@ -108,7 +108,7 @@ class World(object):
         pygame.display.flip()
         
     def fixation_callback(self, eg_data):
-        print eg_data
+        print eg_data.timestamp, eg_data.gaze_found, eg_data.eye_motion_state, eg_data.fix_x, eg_data.fix_y
 
     def process_events(self):
         ret = False
