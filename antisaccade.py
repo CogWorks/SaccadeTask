@@ -51,9 +51,6 @@ class World(object):
         self.arrow_text = ['>','^','<']
         self.clock = pygame.time.Clock()
         self.accuracy = []
-        self.mode = 'anti'
-        if self.args.prosaccade:
-            self.mode = 'pro'
 
         self.EVENT_SHOW_CUE = pygame.USEREVENT + 1
         self.EVENT_SHOW_ARROW = pygame.USEREVENT + 2
@@ -94,7 +91,7 @@ class World(object):
         pygame.draw.line(self.worldsurf, self.fix_color, (self.center_x,self.center_y-cross_radius), (self.center_x, self.center_y+cross_radius), 4)
         if self.args.showmode:
             mtext = ' A '
-            if self.args.prosaccade:
+            if self.mode_text == 'pro':
                 mtext = ' P '
             mode = self.mode_font.render(mtext, True, self.fix_color, (0,0,0))
             mode_rect = mode.get_rect()
@@ -123,7 +120,7 @@ class World(object):
                         cue_side = 'left'
                         if self.loc1 > self.center_x:
                             cue_side = 'right'
-                        result = [self.mode, self.center_x, self.center_y, self.offset, self.fix_delay, self.obj_widths[self.size], cue_side, self.mask_time-self.target_time, self.arrow_text[self.answer]]
+                        result = [self.mode_text, self.center_x, self.center_y, self.offset, self.fix_delay, self.obj_widths[self.size], cue_side, self.mask_time-self.target_time, self.arrow_text[self.answer]]
                         if event.key == pygame.K_LEFT:
                             result.append('<')
                             if self.answer == 2:
@@ -182,8 +179,14 @@ class World(object):
 
     def generate_trial(self):
         self.loc1, self.loc2 = sample(self.offsets,2)
-        if self.args.prosaccade:
+        if self.args.mode == 'pro':
             self.loc2 = self.loc1
+        elif self.args.mode == 'random':
+            self.loc2 = sample(self.offsets,1)[0]
+            if self.loc1 == self.loc2:
+                self.mode_text = 'pro'
+            else:
+                self.mode_text = 'anti'
         self.answer = choice([2,1,0])
         self.size = choice([2,1,0])
         self.fix_color = (255,255,0)
@@ -268,7 +271,7 @@ if __name__ == '__main__':
     parser.add_argument('-F', '--fullscreen', action="store_true", dest="fullscreen", help='Run in fullscreen mode.')
     parser.add_argument('-L', '--log', action="store", dest="logfile", help='Pipe results to file instead of stdout.')
     parser.add_argument('-a', '--arrowsize', action="store", dest="arrowsize", default=0.07, help='Arrow size in terms of fraction of screen height.')
-    parser.add_argument('-p', '--pro', action="store_true", dest="prosaccade", help='Run in pro-saccade mode instead of anti-saccade mode.')
+    parser.add_argument('-m', '--mode', action="store", dest="mode", default='anti', help='Run in pro-saccade mode instead of anti-saccade mode.')
     parser.add_argument('-s', '--showmode', action="store", dest="showmode", type=float, default=0.0, help='Show mode in fixation cross.')
 
     try:
@@ -288,6 +291,12 @@ if __name__ == '__main__':
             sys.exit()
     elif args.showfixation:
         print 'Error: Must enable eyetracker for fixation overlay'
+        sys.exit()
+
+    if args.mode == 'anti' or args.mode == 'pro' or args.mode == 'random':
+        pass
+    else:
+        print "Error: Valid modes are: 'anti', 'pro' or 'random'"
         sys.exit()
 
     gc.disable()
