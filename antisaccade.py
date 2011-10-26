@@ -242,12 +242,12 @@ class World(object):
                     xdiff = abs(self.eg.fix_data.fix_x-self.center_x)
                     ydiff = abs(self.eg.fix_data.fix_y-self.center_y)
                     if xdiff > self.center_y / 16 or ydiff > self.center_y / 16:
-                        sys.stderr.write('False start, resetting trial.')
+                        sys.stderr.write('False start, resetting trial.\n')
                         pygame.time.set_timer(self.EVENT_SHOW_CUE, 0)
                         self.state = 1
                         self.fix_color = (255,0,0)
                 elif not self.eg.eg_data.gaze_found:
-                    sys.stderr.write('Lost gaze, resetting trial.')
+                    sys.stderr.write('Lost gaze, resetting trial.\n')
                     pygame.time.set_timer(self.EVENT_SHOW_CUE, 0)
                     self.state = 1
                     self.fix_color = (255,0,0)
@@ -258,6 +258,8 @@ class World(object):
     def cleanup(self):
         if self.args.logfile:
             self.output.close()
+        if self.eg:
+            self.eg.disconnect()
         sys.exit()
 
 def main(args):
