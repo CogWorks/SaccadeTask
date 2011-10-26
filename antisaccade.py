@@ -25,6 +25,7 @@ class World(object):
             if msg:
                 print msg
                 sys.exit()
+            self.eg.fixation_callback = self.fixation_callback
         
         pygame.mouse.set_visible(False)
         if self.args.fullscreen:
@@ -105,6 +106,9 @@ class World(object):
     def update_world(self):
         self.screen.blit(self.worldsurf, self.worldsurf_rect)
         pygame.display.flip()
+        
+    def fixation_callback(self, eg_data):
+        print eg_data
 
     def process_events(self):
         ret = False
