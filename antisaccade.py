@@ -116,7 +116,10 @@ class World(object):
         pygame.display.flip()
         
     def fixation_callback(self, eg_data):
-        self.eg_output.write("%d\t%s\t%f\t%d\t%d\n" %(self.trial,self.mode_text,eg_data.timestamp,int(eg_data.gaze_x),int(eg_data.gaze_y)))
+        if self.trial_start != 0 and self.trial_stop == 0:
+            if self.trial_start == -1:
+                self.trial_start = eg_data.timestamp
+            self.eg_output.write("%d\t%s\t%s\t%f\t%d\t%d\n" %(self.trial,self.mode_text,self.cue_side,eg_data.timestamp-self.trial_start,int(eg_data.gaze_x),int(eg_data.gaze_y)))
         if self.cue_time > 0:
             if eg_data.eye_motion_state == 2 and self.saccade_latency == 0:
                 self.saccade_latency = pygame.time.get_ticks() - self.cue_time
@@ -137,11 +140,9 @@ class World(object):
                     self.cleanup()
                 elif self.state == 5:
                     if event.key == pygame.K_LEFT or event.key == pygame.K_UP or event.key == pygame.K_RIGHT:
+                        self.trial_stop = -1
                         rt = pygame.time.get_ticks() - self.target_time
-                        cue_side = 'left'
-                        if self.loc1 > self.center_x:
-                            cue_side = 'right'
-                        result = [self.mode_text, self.center_x, self.center_y, self.offset, self.fix_delay, self.obj_widths[self.size], cue_side, self.mask_time-self.target_time, self.arrow_text[self.answer]]
+                        result = [self.mode_text, self.center_x, self.center_y, self.offset, self.fix_delay, self.obj_widths[self.size], self.cue_side, self.mask_time-self.target_time, self.arrow_text[self.answer]]
                         if event.key == pygame.K_LEFT:
                             result.append('<')
                             if self.answer == 2:
@@ -175,6 +176,7 @@ class World(object):
                 self.state = 3
                 pygame.time.set_timer(self.EVENT_SHOW_ARROW, 400)
                 self.cue_time = pygame.time.get_ticks()
+                self.trial_start = -1
             elif event.type == self.EVENT_SHOW_ARROW:
                 pygame.time.set_timer(self.EVENT_SHOW_ARROW, 0)
                 self.state = 4
@@ -224,6 +226,11 @@ class World(object):
         self.cue_time = 0
         self.target_time = 0
         self.trial += 1
+        self.trial_start = 0
+        self.trial_stop = 0
+        self.cue_side = 'left'
+        if self.loc1 > self.center_x:
+            self.cue_side = 'right'
 
     def show_intro(self):
 
