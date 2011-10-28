@@ -9,14 +9,29 @@ import math
 import gc
 import sys
 import time
+import os
 
 class World(object):
     """Task Environment"""
 
-    def __init__(self, args):
+    def __init__(self, args, subjectInfo):
         super(World, self).__init__()
 
         self.args = args
+        self.subjectInfo = subjectInfo
+        
+        self.logdir = args.logdir
+        if not os.path.exists(self.logdir):
+            os.makedirs(self.logdir)
+        
+        if self.subjectInfo:
+            eid = rin2id(subjectInfo['rin'])
+            subjectInfo['encrypted_rin'] = eid
+            subjectInfo['cipher'] = 'AES/CBC (RIJNDAEL) - 16Byte Key'
+            self.log_basename = cwsubject.makeLogFileBase(eid[:8])
+            cwsubject.writeHistoryFile(os.path.join(self.logdir,self.log_basename), self.subjectInfo)
+        else:
+            self.log_basename = cwsubject.makeLogFileBase(None)
         
         self.eg = None
         if self.args.eyetracker:
@@ -144,6 +159,7 @@ class World(object):
                             else:
                                 result.append(0)
                         result.append(rt)
+                        self.trial_stop = pygame.time.get_ticks()
                         self.state = 0
                         self.output.write("%s\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t%s\t%d\t%d\n" % tuple(result))
                         self.accuracy.append(result)
@@ -152,6 +168,7 @@ class World(object):
                 pygame.time.set_timer(self.EVENT_SHOW_CUE, 0)
                 self.state = 3
                 pygame.time.set_timer(self.EVENT_SHOW_ARROW, 400)
+                self.trial_start = pygame.time.get_ticks()
             elif event.type == self.EVENT_SHOW_ARROW:
                 pygame.time.set_timer(self.EVENT_SHOW_ARROW, 0)
                 self.state = 4
@@ -194,6 +211,8 @@ class World(object):
         self.answer = choice([2,1,0])
         self.size = choice([2,1,0])
         self.fix_color = (255,255,0)
+        self.trial_start = 0
+        self.trial_stop = 0
 
     def show_intro(self):
 
@@ -266,11 +285,6 @@ class World(object):
             self.eg.disconnect()
         sys.exit()
 
-def main(args):
-    w = World(args)
-    while True:
-        w.run()
-
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -279,11 +293,22 @@ if __name__ == '__main__':
     parser.add_argument('-a', '--arrowsize', action="store", dest="arrowsize", default=0.07, help='Arrow size in terms of fraction of screen height.')
     parser.add_argument('-m', '--mode', action="store", dest="mode", default='anti', help='Run in pro-saccade mode instead of anti-saccade mode.')
     parser.add_argument('-s', '--showmode', action="store", dest="showmode", type=float, default=0.0, help='Show mode in fixation cross.')
+    parser.add_argument('-b', '--balanced', action="store_true", dest="balanced", help='Counter-balance trials.')
+    parser.add_argument('-D', '--logdir', action="store", dest="logdir", default='data', help='Log dir')
 
     try:
         from pycogworks.eyegaze import *
         parser.add_argument('-e', '--eyetracker', action="store", dest="eyetracker", help='Use eyetracker.')
         parser.add_argument('-f', '--fixation', action="store_true", dest="showfixation", help='Overlay fixation.')
+    except ImportError:
+        pass
+    
+    subjectInfo = False
+    try:
+        import pycogworks.cwsubject as cwsubject
+        from pycogworks.util import rin2id
+        parser.add_argument('-S', '--subject', action="store_true", dest="subject", help='Get CogWorks subject info.')
+        subjectInfo = True
     except ImportError:
         pass
 
@@ -304,8 +329,18 @@ if __name__ == '__main__':
     else:
         print "Error: Valid modes are: 'anti', 'pro' or 'random'"
         sys.exit()
+        
+    if subjectInfo and args.subject:
+        subjectInfo = cwsubject.getSubjectInfo(minimal=True)
+        if not subjectInfo:
+            sys.exit()
+    else:
+        subjectInfo = False
 
     gc.disable()
     pygame.display.init()
     pygame.font.init()
-    main(args)
+    
+    w = World(args, subjectInfo)
+    while True:
+        w.run()
