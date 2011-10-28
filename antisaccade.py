@@ -76,6 +76,14 @@ class World(object):
             self.output = open(args.logfile, 'w')
         else:
             self.output = sys.stdout
+        
+        if self.eg:
+            self.eg_output = open('eyegaze.log', 'w')
+            self.eg_output.write("trial\tmode\ttime\tgaze_x\tgaze_y\n")
+            
+        self.mode_text = ''
+        
+        self.trial = 0
 
     def get_fixation_interval(self):
         return randrange(1500,3500,1)
@@ -123,7 +131,19 @@ class World(object):
         pygame.display.flip()
         
     def fixation_callback(self, eg_data):
-        print eg_data.timestamp, eg_data.gaze_found, eg_data.eye_motion_state, eg_data.fix_x, eg_data.fix_y
+        if self.trial_start != 0 and self.trial_stop == 0:
+            if self.trial_start == -1:
+                self.trial_start = eg_data.timestamp
+            self.eg_output.write("%d\t%s\t%s\t%f\t%d\t%d\n" %(self.trial,self.mode_text,self.cue_side,eg_data.timestamp-self.trial_start,int(eg_data.gaze_x),int(eg_data.gaze_y)))
+        if self.cue_time > 0:
+            if eg_data.eye_motion_state == 2 and self.saccade_latency == 0:
+                self.saccade_latency = pygame.time.get_ticks() - self.cue_time
+                print eg_data.timestamp, eg_data.fix_x, eg_data.fix_y
+            elif self.saccade_latency > 0 and self.saccade_direction == 'none':
+                if eg_data.gaze_x < self.center_x:
+                    self.saccade_direction = 'left'
+                else:
+                    self.saccade_direction = 'right'
 
     def process_events(self):
         ret = False
@@ -135,11 +155,9 @@ class World(object):
                     self.cleanup()
                 elif self.state == 5:
                     if event.key == pygame.K_LEFT or event.key == pygame.K_UP or event.key == pygame.K_RIGHT:
+                        self.trial_stop = -1
                         rt = pygame.time.get_ticks() - self.target_time
-                        cue_side = 'left'
-                        if self.loc1 > self.center_x:
-                            cue_side = 'right'
-                        result = [self.mode_text, self.center_x, self.center_y, self.offset, self.fix_delay, self.obj_widths[self.size], cue_side, self.mask_time-self.target_time, self.arrow_text[self.answer]]
+                        result = [self.mode_text, self.center_x, self.center_y, self.offset, self.fix_delay, self.obj_widths[self.size], self.cue_side, self.mask_time-self.target_time, self.arrow_text[self.answer]]
                         if event.key == pygame.K_LEFT:
                             result.append('<')
                             if self.answer == 2:
@@ -161,14 +179,21 @@ class World(object):
                         result.append(rt)
                         self.trial_stop = pygame.time.get_ticks()
                         self.state = 0
-                        self.output.write("%s\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t%s\t%d\t%d\n" % tuple(result))
+                        if self.eg:
+                            result.append(self.saccade_direction)
+                            result.append(self.saccade_latency)
+                            self.output.write("%s\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t%s\t%d\t%d\t%s\t%d\n" % tuple(result))
+                        else:
+                            self.output.write("%s\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t%s\t%d\t%d\n" % tuple(result))
                         self.accuracy.append(result)
                 ret = True
             elif event.type == self.EVENT_SHOW_CUE:
                 pygame.time.set_timer(self.EVENT_SHOW_CUE, 0)
                 self.state = 3
                 pygame.time.set_timer(self.EVENT_SHOW_ARROW, 400)
-                self.trial_start = pygame.time.get_ticks()
+                self.cue_time = pygame.time.get_ticks()
+                self.trial_start = -1
+
             elif event.type == self.EVENT_SHOW_ARROW:
                 pygame.time.set_timer(self.EVENT_SHOW_ARROW, 0)
                 self.state = 4
@@ -200,8 +225,12 @@ class World(object):
 
     def generate_trial(self):
         self.loc1, self.loc2 = sample(self.offsets,2)
+        self.mode_text = 'anti'
+        self.saccade_latency = 0
+        self.saccade_direction = 'none'
         if self.args.mode == 'pro':
             self.loc2 = self.loc1
+            self.mode_text = 'anti'
         elif self.args.mode == 'random':
             self.loc2 = sample(self.offsets,1)[0]
             if self.loc1 == self.loc2:
@@ -211,8 +240,14 @@ class World(object):
         self.answer = choice([2,1,0])
         self.size = choice([2,1,0])
         self.fix_color = (255,255,0)
+        self.cue_time = 0
+        self.target_time = 0
+        self.trial += 1
         self.trial_start = 0
         self.trial_stop = 0
+        self.cue_side = 'left'
+        if self.loc1 > self.center_x:
+            self.cue_side = 'right'
 
     def show_intro(self):
 
@@ -282,6 +317,7 @@ class World(object):
         if self.args.logfile:
             self.output.close()
         if self.eg:
+            self.eg_output.close()
             self.eg.disconnect()
         sys.exit()
 
