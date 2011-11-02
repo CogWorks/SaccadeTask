@@ -89,6 +89,7 @@ class World(object):
         self.mode_text = ''
         
         self.trial = 0
+        self.cue_time = self.trial_stop = self.trial_start = 0
 
     def get_fixation_interval(self):
         return randrange(1500,3500,1)
@@ -103,7 +104,8 @@ class World(object):
         self.draw_text(u'\u25CF', self.cue_fonts[size], (0,0,0), (x, self.center_y))
         
     def draw_fixation_circle(self):
-        self.draw_text(self.fix_shape, self.cue_fonts[0], (0,0,0), (self.center_x, self.center_y))
+        if self.show_fix:
+            self.draw_text(self.fix_shape, self.cue_fonts[0], (0,0,0), (self.center_x, self.center_y))
         
     def draw_text(self, text, font, color, loc):
         t = font.render(text, True, color)
@@ -176,6 +178,7 @@ class World(object):
                         self.accuracy.append(result)
                 ret = True
             elif event.type == self.EVENT_HIDE_FIX:
+                pygame.time.set_timer(self.EVENT_HIDE_FIX, 0)
                 self.show_fix = False
             elif event.type == self.EVENT_SHOW_CUE:
                 pygame.time.set_timer(self.EVENT_SHOW_CUE, 0)
@@ -201,9 +204,8 @@ class World(object):
 
     def draw_world(self):
         self.clear()
-        if self.show_fix and (self.state == 1 or self.state == 2):
+        if self.state == 1 or self.state == 2:
             self.draw_fixation_circle()
-            #self.draw_fixation_cross()
         elif self.state == 3:
             self.draw_cue(self.loc1, 0)
         elif self.state == 4:
@@ -266,11 +268,11 @@ class World(object):
 
     def run(self):
         self.state = -1
-        self.show_intro()
-        while not self.process_events(): pass
         if self.eg:
             self.eg.calibrate(self.screen)  
 	    self.eg.data_start()
+        self.show_intro()
+        while not self.process_events(): pass
         self.state = 0
         if self.eg:
             self.output.write('mode\tcenter_x\tcenter_y\toffset\tfix_delay\tcue_size\tcue_side\ttarget_time\ttarget\tresponse\tcorrect\trt\t1st_saccade_direction\t1st_saccade_latency\n')
@@ -298,6 +300,8 @@ class World(object):
                             self.state = 2
                             self.fix_delay = self.get_fixation_interval()
                             pygame.time.set_timer(self.EVENT_SHOW_CUE, self.fix_delay)
+                            if not self.args.nogap:
+                                pygame.time.set_timer(self.EVENT_HIDE_FIX, self.fix_delay-200)
                 else:
                     self.fix_color = (255,255,0)
                     self.fix_shape = u'\u25CB'
@@ -308,13 +312,17 @@ class World(object):
                     if xdiff > self.center_y / 16 or ydiff > self.center_y / 16:
                         sys.stderr.write('False start, resetting trial.\n')
                         pygame.time.set_timer(self.EVENT_SHOW_CUE, 0)
+                        pygame.time.set_timer(self.EVENT_HIDE_FIX, 0)
                         self.state = 1
                         self.fix_color = (255,0,0)
+                        self.fix_shape = u'\u25CB'
                 elif not self.eg.eg_data.gaze_found:
                     sys.stderr.write('Lost gaze, resetting trial.\n')
                     pygame.time.set_timer(self.EVENT_SHOW_CUE, 0)
+                    pygame.time.set_timer(self.EVENT_HIDE_FIX, 0)
                     self.state = 1
                     self.fix_color = (255,0,0)
+                    self.fix_shape = u'\u25CB'
             self.clock.tick(30)
             self.process_events()
             self.draw_world()
