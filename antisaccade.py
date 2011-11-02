@@ -34,8 +34,12 @@ class World(object):
             subjectInfo['cipher'] = 'AES/CBC (RIJNDAEL) - 16Byte Key'
             self.log_basename = cwsubject.makeLogFileBase(eid[:8])
             cwsubject.writeHistoryFile(os.path.join(self.logdir,self.log_basename), self.subjectInfo)
+            self.output = open(os.path.join(self.logdir,self.log_basename)+'.log', 'w')
         else:
-            self.log_basename = cwsubject.makeLogFileBase(None)
+            if self.args.logfile:
+                self.output = open(args.logfile, 'w')
+            else:
+                self.output = sys.stdout
         
         self.eg = None
         if self.args.eyetracker:
@@ -76,15 +80,6 @@ class World(object):
         self.EVENT_SHOW_ARROW = pygame.USEREVENT + 2
         self.EVENT_SHOW_MASK = pygame.USEREVENT + 3
         self.EVENT_HIDE_FIX = pygame.USEREVENT + 4
-
-        if self.args.logfile:
-            self.output = open(args.logfile, 'w')
-        else:
-            self.output = sys.stdout
-        
-        if self.eg:
-            self.eg_output = open('eyegaze.log', 'w')
-            self.eg_output.write("trial\tmode\tcue_side\tgaze_found\ttimestamp\ttrial_time\tgaze_x\tgaze_y\n")
             
         self.mode_text = ''
         
@@ -124,7 +119,13 @@ class World(object):
         if self.trial_start != 0 and self.trial_stop == 0:
             if self.trial_start == -1:
                 self.trial_start = eg_data.timestamp
-            self.eg_output.write("%d\t%s\t%s\t%d\t%f\t%f\t%d\t%d\n" %(self.trial,self.mode_text,self.cue_side,eg_data.gaze_found,eg_data.timestamp,eg_data.timestamp-self.trial_start,int(eg_data.gaze_x),int(eg_data.gaze_y)))
+            result = [self.trial,self.mode_text, self.center_x, self.center_y,
+                      self.offset, self.fix_delay, self.obj_widths[self.size],
+                      self.cue_side, self.mask_time-self.target_time,
+                      self.arrow_text[self.answer], '','','','','',
+                      eg_data.gaze_found,eg_data.timestamp, eg_data.timestamp-self.trial_start,
+                      int(eg_data.gaze_x),int(eg_data.gaze_y)]
+            self.output.write("EVENT_EYEGAZE\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t%s\t%d\t%d\t%s\t%d\t%d\t%f\t%f\t%d\t%d\n" % tuple(result))
         if self.cue_time > 0:
             if eg_data.eye_motion_state == 2 and self.saccade_latency == 0:
                 self.saccade_latency = pygame.time.get_ticks() - self.cue_time
@@ -147,7 +148,7 @@ class World(object):
                     if event.key == pygame.K_LEFT or event.key == pygame.K_UP or event.key == pygame.K_RIGHT:
                         self.trial_stop = -1
                         rt = pygame.time.get_ticks() - self.target_time
-                        result = [self.mode_text, self.center_x, self.center_y, self.offset, self.fix_delay, self.obj_widths[self.size], self.cue_side, self.mask_time-self.target_time, self.arrow_text[self.answer]]
+                        result = [self.trial, self.mode_text, self.center_x, self.center_y, self.offset, self.fix_delay, self.obj_widths[self.size], self.cue_side, self.mask_time-self.target_time, self.arrow_text[self.answer]]
                         if event.key == pygame.K_LEFT:
                             result.append('<')
                             if self.answer == 2:
@@ -172,9 +173,9 @@ class World(object):
                         if self.eg:
                             result.append(self.saccade_direction)
                             result.append(self.saccade_latency)
-                            self.output.write("%s\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t%s\t%d\t%d\t%s\t%d\n" % tuple(result))
+                            self.output.write("EVENT_TASK\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t%s\t%d\t%d\t%s\t%d\n" % tuple(result))
                         else:
-                            self.output.write("%s\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t%s\t%d\t%d\n" % tuple(result))
+                            self.output.write("EVENT_TASK\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t%s\t%d\t%d\n" % tuple(result))
                         self.accuracy.append(result)
                 ret = True
             elif event.type == self.EVENT_HIDE_FIX:
@@ -207,7 +208,7 @@ class World(object):
         if self.state == 1 or self.state == 2:
             self.draw_fixation_circle()
         elif self.state == 3:
-            self.draw_cue(self.loc1, 0)
+            self.draw_cue(self.loc1, self.size)
         elif self.state == 4:
             self.draw_arrow(self.answer, self.obj_widths[0], self.loc2)
         elif self.state == 5:
@@ -237,7 +238,7 @@ class World(object):
                 self.mode_text = 'anti'
                 self.bgcolor = self.colors[0]
         self.answer = choice([2,1,0])
-        self.size = choice([2,1,0])
+        self.size = 0#choice([2,1,0])
         self.fix_color = (255,255,0)
         self.cue_time = 0
         self.target_time = 0
@@ -275,9 +276,9 @@ class World(object):
         while not self.process_events(): pass
         self.state = 0
         if self.eg:
-            self.output.write('mode\tcenter_x\tcenter_y\toffset\tfix_delay\tcue_size\tcue_side\ttarget_time\ttarget\tresponse\tcorrect\trt\t1st_saccade_direction\t1st_saccade_latency\n')
+            self.output.write('event_type\ttrial\tmode\tcenter_x\tcenter_y\toffset\tfix_delay\tcue_size\tcue_side\ttarget_time\ttarget\tresponse\tcorrect\trt\t1st_saccade_direction\t1st_saccade_latency\tgaze_found\ttimestamp\ttrial_time\tgaze_x\tgaze_y\n')
         else:
-            self.output.write('mode\tcenter_x\tcenter_y\toffset\tfix_delay\tcue_size\tcue_side\ttarget_time\ttarget\tresponse\tcorrect\trt\n')
+            self.output.write('event_type\ttrial\tmode\tcenter_x\tcenter_y\toffset\tfix_delay\tcue_size\tcue_side\ttarget_time\ttarget\tresponse\tcorrect\trt\n')
         while True:
             if self.state == 0:
                 self.generate_trial()
