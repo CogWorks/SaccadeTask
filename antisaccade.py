@@ -16,7 +16,11 @@ class World(object):
 
     def __init__(self, args, subjectInfo):
         super(World, self).__init__()
-
+        
+        self.colors = [(204,255,102),(255,153,255)]
+        self.bgcolor = (0,0,0)
+        self.fix_shape = u'\u25CB'
+        
         self.args = args
         self.subjectInfo = subjectInfo
         
@@ -71,6 +75,7 @@ class World(object):
         self.EVENT_SHOW_CUE = pygame.USEREVENT + 1
         self.EVENT_SHOW_ARROW = pygame.USEREVENT + 2
         self.EVENT_SHOW_MASK = pygame.USEREVENT + 3
+        self.EVENT_HIDE_FIX = pygame.USEREVENT + 4
 
         if self.args.logfile:
             self.output = open(args.logfile, 'w')
@@ -89,7 +94,7 @@ class World(object):
         return randrange(1500,3500,1)
 
     def draw_arrow(self, type, size, x):
-         arrow = self.arrow_font.render(self.arrows[type], True, (255,255,255))
+         arrow = self.arrow_font.render(self.arrows[type], True, (0,0,0))
          arrow_rect = arrow.get_rect()
          arrow_rect.centerx = x
          arrow_rect.centery = self.center_y
@@ -103,12 +108,20 @@ class World(object):
         self.worldsurf.blit(mask, mask_rect)
 
     def draw_cue(self, x, size):
-        cue = self.cue_fonts[size].render(u'\u25AA', True, (255,255,255))
+        cue = self.cue_fonts[size].render(u'\u25CF', True, (0,0,0))
+        #cue = self.cue_fonts[size].render(u'\u25AA', True, (255,255,255))
         cue_rect = cue.get_rect()
         cue_rect.centerx = x
         cue_rect.centery = self.center_y
         self.worldsurf.blit(cue, cue_rect)
-
+        
+    def draw_fixation_circle(self):
+        fix = self.cue_fonts[0].render(self.fix_shape, True, (0,0,0))
+        fix_rect = fix.get_rect()
+        fix_rect.centerx = self.center_x
+        fix_rect.centery = self.center_y
+        self.worldsurf.blit(fix, fix_rect)
+        
     def draw_fixation_cross(self):
         cross_radius = self.center_y / 18
         pygame.draw.line(self.worldsurf, self.fix_color, (self.center_x-cross_radius,self.center_y), (self.center_x+cross_radius, self.center_y), 4)
@@ -117,14 +130,14 @@ class World(object):
             mtext = ' A '
             if self.mode_text == 'pro':
                 mtext = ' P '
-            mode = self.mode_font.render(mtext, True, self.fix_color, (0,0,0))
+            mode = self.mode_font.render(mtext, True, self.fix_color, self.bgcolor)
             mode_rect = mode.get_rect()
             mode_rect.centerx = self.center_x
             mode_rect.centery = self.center_y
             self.worldsurf.blit(mode, mode_rect)
 
     def clear(self):
-        self.worldsurf.fill((0,0,0))
+        self.worldsurf.fill(self.bgcolor)
 
     def update_world(self):
         self.screen.blit(self.worldsurf, self.worldsurf_rect)
@@ -187,6 +200,8 @@ class World(object):
                             self.output.write("%s\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t%s\t%d\t%d\n" % tuple(result))
                         self.accuracy.append(result)
                 ret = True
+            elif event.type == self.EVENT_HIDE_FIX:
+                self.show_fix = False
             elif event.type == self.EVENT_SHOW_CUE:
                 pygame.time.set_timer(self.EVENT_SHOW_CUE, 0)
                 self.state = 3
@@ -211,10 +226,11 @@ class World(object):
 
     def draw_world(self):
         self.clear()
-        if self.state == 1 or self.state == 2:
-            self.draw_fixation_cross()
+        if self.show_fix and (self.state == 1 or self.state == 2):
+            self.draw_fixation_circle()
+            #self.draw_fixation_cross()
         elif self.state == 3:
-            self.draw_cue(self.loc1, self.size)
+            self.draw_cue(self.loc1, 0)
         elif self.state == 4:
             self.draw_arrow(self.answer, self.obj_widths[0], self.loc2)
         elif self.state == 5:
@@ -224,19 +240,25 @@ class World(object):
         self.update_world()
 
     def generate_trial(self):
+        self.show_fix = True
+        self.fix_shape = u'\u25CB'
         self.loc1, self.loc2 = sample(self.offsets,2)
         self.mode_text = 'anti'
         self.saccade_latency = 0
         self.saccade_direction = 'none'
+        self.bgcolor = self.colors[0]
         if self.args.mode == 'pro':
+            self.bgcolor = self.colors[1]
             self.loc2 = self.loc1
             self.mode_text = 'anti'
         elif self.args.mode == 'random':
             self.loc2 = sample(self.offsets,1)[0]
             if self.loc1 == self.loc2:
                 self.mode_text = 'pro'
+                self.bgcolor = self.colors[1]
             else:
                 self.mode_text = 'anti'
+                self.bgcolor = self.colors[0]
         self.answer = choice([2,1,0])
         self.size = choice([2,1,0])
         self.fix_color = (255,255,0)
@@ -283,18 +305,22 @@ class World(object):
                     self.state = 2
                     self.fix_delay = self.get_fixation_interval()
                     pygame.time.set_timer(self.EVENT_SHOW_CUE, self.fix_delay)
+                    if not self.args.nogap:
+                        pygame.time.set_timer(self.EVENT_HIDE_FIX, self.fix_delay-200)
             elif self.state == 1:
                 if self.eg.fix_data:
                     xdiff = abs(self.eg.fix_data.fix_x-self.center_x)
                     ydiff = abs(self.eg.fix_data.fix_y-self.center_y)
                     if xdiff <= self.center_y / 16 and ydiff <= self.center_y / 16:
                         self.fix_color = (0,255,0)
-                        if self.eg.fix_data.fix_duration > 25: # About 300ms
+                        self.fix_shape = u'\u25C9'
+                        if self.eg.fix_data.fix_duration > 0: # Means at least 100ms
                             self.state = 2
                             self.fix_delay = self.get_fixation_interval()
                             pygame.time.set_timer(self.EVENT_SHOW_CUE, self.fix_delay)
                 else:
                     self.fix_color = (255,255,0)
+                    self.fix_shape = u'\u25CB'
             elif self.state == 2 and self.eg:
                 if self.eg.fix_data:
                     xdiff = abs(self.eg.fix_data.fix_x-self.center_x)
@@ -327,10 +353,11 @@ if __name__ == '__main__':
     parser.add_argument('-F', '--fullscreen', action="store_true", dest="fullscreen", help='Run in fullscreen mode.')
     parser.add_argument('-L', '--log', action="store", dest="logfile", help='Pipe results to file instead of stdout.')
     parser.add_argument('-a', '--arrowsize', action="store", dest="arrowsize", default=0.07, help='Arrow size in terms of fraction of screen height.')
-    parser.add_argument('-m', '--mode', action="store", dest="mode", default='anti', help='Run in pro-saccade mode instead of anti-saccade mode.')
-    parser.add_argument('-s', '--showmode', action="store", dest="showmode", type=float, default=0.0, help='Show mode in fixation cross.')
+    parser.add_argument('-m', '--mode', action="store", dest="mode", default='random', help='Run in pro-saccade mode instead of anti-saccade mode.')
+    parser.add_argument('-s', '--showmode', action="store", dest="showmode", type=float, default=0.5, help='Show mode in fixation cross.')
     parser.add_argument('-b', '--balanced', action="store_true", dest="balanced", help='Counter-balance trials.')
     parser.add_argument('-D', '--logdir', action="store", dest="logdir", default='data', help='Log dir')
+    parser.add_argument('-n', '--nogap', action="store_true", dest="nogap", help="Don't do gap trials")
 
     try:
         from pycogworks.eyegaze import *
