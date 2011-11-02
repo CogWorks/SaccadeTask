@@ -288,7 +288,7 @@ class World(object):
                     self.fix_delay = self.get_fixation_interval()
                     pygame.time.set_timer(self.EVENT_SHOW_CUE, self.fix_delay)
                     if not self.args.nogap:
-                        pygame.time.set_timer(self.EVENT_HIDE_FIX, self.fix_delay-200)
+                        pygame.time.set_timer(self.EVENT_HIDE_FIX, self.fix_delay-233)
             elif self.state == 1:
                 if self.eg.fix_data:
                     xdiff = abs(self.eg.fix_data.fix_x-self.center_x)
@@ -301,7 +301,7 @@ class World(object):
                             self.fix_delay = self.get_fixation_interval()
                             pygame.time.set_timer(self.EVENT_SHOW_CUE, self.fix_delay)
                             if not self.args.nogap:
-                                pygame.time.set_timer(self.EVENT_HIDE_FIX, self.fix_delay-200)
+                                pygame.time.set_timer(self.EVENT_HIDE_FIX, self.fix_delay-233)
                 else:
                     self.fix_color = (255,255,0)
                     self.fix_shape = u'\u25CB'
