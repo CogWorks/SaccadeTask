@@ -84,7 +84,7 @@ class World(object):
         
         if self.eg:
             self.eg_output = open('eyegaze.log', 'w')
-            self.eg_output.write("trial\tmode\ttime\tgaze_x\tgaze_y\n")
+            self.eg_output.write("trial\tmode\tcue_side\tgaze_found\ttimestamp\ttrial_time\tgaze_x\tgaze_y\n")
             
         self.mode_text = ''
         
@@ -122,7 +122,7 @@ class World(object):
         if self.trial_start != 0 and self.trial_stop == 0:
             if self.trial_start == -1:
                 self.trial_start = eg_data.timestamp
-            self.eg_output.write("%d\t%s\t%s\t%f\t%d\t%d\n" %(self.trial,self.mode_text,self.cue_side,eg_data.timestamp-self.trial_start,int(eg_data.gaze_x),int(eg_data.gaze_y)))
+            self.eg_output.write("%d\t%s\t%s\t%d\t%f\t%f\t%d\t%d\n" %(self.trial,self.mode_text,self.cue_side,eg_data.gaze_found,eg_data.timestamp,eg_data.timestamp-self.trial_start,int(eg_data.gaze_x),int(eg_data.gaze_y)))
         if self.cue_time > 0:
             if eg_data.eye_motion_state == 2 and self.saccade_latency == 0:
                 self.saccade_latency = pygame.time.get_ticks() - self.cue_time
