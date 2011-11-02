@@ -61,9 +61,9 @@ class World(object):
         obj_width = int(self.center_y * self.args.arrowsize)
         self.fontname = 'DejaVuSansMono.ttf'
         self.obj_widths = [obj_width, int(math.ceil(obj_width*1.5)), int(math.ceil(obj_width*2))]
-        self.mode_font = pygame.font.Font(self.fontname, int(self.obj_widths[0]*self.args.showmode))
         self.arrow_font = pygame.font.Font(self.fontname, self.obj_widths[0])
         self.mask_font = pygame.font.Font(self.fontname, int(self.obj_widths[2]*1.5))
+        self.demo_font = pygame.font.Font(self.fontname, int(self.obj_widths[2]*4))
         self.cue_fonts = [pygame.font.Font(self.fontname, self.obj_widths[0]),
                           pygame.font.Font(self.fontname, self.obj_widths[1]),
                           pygame.font.Font(self.fontname, self.obj_widths[2])]
@@ -94,48 +94,23 @@ class World(object):
         return randrange(1500,3500,1)
 
     def draw_arrow(self, type, size, x):
-         arrow = self.arrow_font.render(self.arrows[type], True, (0,0,0))
-         arrow_rect = arrow.get_rect()
-         arrow_rect.centerx = x
-         arrow_rect.centery = self.center_y
-         self.worldsurf.blit(arrow, arrow_rect)
+        self.draw_text(self.arrows[type], self.arrow_font, (0,0,0), (x, self.center_y))
 
     def draw_mask(self, x):
-        mask = self.mask_font.render(u'\u25A9', True, (128,128,128))
-        mask_rect = mask.get_rect()
-        mask_rect.centerx = x
-        mask_rect.centery = self.center_y
-        self.worldsurf.blit(mask, mask_rect)
+        self.draw_text(u'\u25A9', self.mask_font, (128,128,128), (x, self.center_y))
 
     def draw_cue(self, x, size):
-        cue = self.cue_fonts[size].render(u'\u25CF', True, (0,0,0))
-        #cue = self.cue_fonts[size].render(u'\u25AA', True, (255,255,255))
-        cue_rect = cue.get_rect()
-        cue_rect.centerx = x
-        cue_rect.centery = self.center_y
-        self.worldsurf.blit(cue, cue_rect)
+        self.draw_text(u'\u25CF', self.cue_fonts[size], (0,0,0), (x, self.center_y))
         
     def draw_fixation_circle(self):
-        fix = self.cue_fonts[0].render(self.fix_shape, True, (0,0,0))
-        fix_rect = fix.get_rect()
-        fix_rect.centerx = self.center_x
-        fix_rect.centery = self.center_y
-        self.worldsurf.blit(fix, fix_rect)
+        self.draw_text(self.fix_shape, self.cue_fonts[0], (0,0,0), (self.center_x, self.center_y))
         
-    def draw_fixation_cross(self):
-        cross_radius = self.center_y / 18
-        pygame.draw.line(self.worldsurf, self.fix_color, (self.center_x-cross_radius,self.center_y), (self.center_x+cross_radius, self.center_y), 4)
-        pygame.draw.line(self.worldsurf, self.fix_color, (self.center_x,self.center_y-cross_radius), (self.center_x, self.center_y+cross_radius), 4)
-        if self.args.showmode:
-            mtext = ' A '
-            if self.mode_text == 'pro':
-                mtext = ' P '
-            mode = self.mode_font.render(mtext, True, self.fix_color, self.bgcolor)
-            mode_rect = mode.get_rect()
-            mode_rect.centerx = self.center_x
-            mode_rect.centery = self.center_y
-            self.worldsurf.blit(mode, mode_rect)
-
+    def draw_text(self, text, font, color, loc):
+        t = font.render(text, True, color)
+        tr = t.get_rect()
+        tr.center = loc
+        self.worldsurf.blit(t, tr)
+        
     def clear(self):
         self.worldsurf.fill(self.bgcolor)
 
@@ -272,12 +247,17 @@ class World(object):
             self.cue_side = 'right'
 
     def show_intro(self):
-
+        ifont1 = pygame.font.Font(None, 34)
+        ifont2 = pygame.font.Font(None, 24)
         self.clear()
-        intro = pygame.font.Font(None, 24).render("Press Any Key To Begin", True, (255,255,255))
+        self.draw_text(u'\u25A0', self.demo_font, self.colors[0], (self.center_x/2,self.center_y/8*4))
+        self.draw_text('Look away from cue!', ifont1, (255,255,255), (self.center_x/2,self.center_y/8*6.5))
+        self.draw_text(u'\u25A0', self.demo_font, self.colors[1], (self.center_x+self.center_x/2,self.center_y/8*4))
+        self.draw_text('Look towards cue!', ifont1, (255,255,255), (self.center_x+self.center_x/2,self.center_y/8*6.5))
+        intro = ifont2.render("Press Any Key To Begin", True, (255,255,255))
         intro_rect = intro.get_rect()
         intro_rect.centerx = self.center_x
-        intro_rect.centery = self.center_y
+        intro_rect.centery = int(self.center_y / 2 * 3) 
         self.worldsurf.blit(intro, intro_rect)
         self.update_world()
 
@@ -354,7 +334,6 @@ if __name__ == '__main__':
     parser.add_argument('-L', '--log', action="store", dest="logfile", help='Pipe results to file instead of stdout.')
     parser.add_argument('-a', '--arrowsize', action="store", dest="arrowsize", default=0.07, help='Arrow size in terms of fraction of screen height.')
     parser.add_argument('-m', '--mode', action="store", dest="mode", default='random', help='Run in pro-saccade mode instead of anti-saccade mode.')
-    parser.add_argument('-s', '--showmode', action="store", dest="showmode", type=float, default=0.5, help='Show mode in fixation cross.')
     parser.add_argument('-b', '--balanced', action="store_true", dest="balanced", help='Counter-balance trials.')
     parser.add_argument('-D', '--logdir', action="store", dest="logdir", default='data', help='Log dir')
     parser.add_argument('-n', '--nogap', action="store_true", dest="nogap", help="Don't do gap trials")
