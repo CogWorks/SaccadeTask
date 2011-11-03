@@ -24,6 +24,8 @@ class World(object):
         self.args = args
         self.subjectInfo = subjectInfo
         
+        self.screenshot = 1
+        
         self.logdir = args.logdir
         if not os.path.exists(self.logdir):
             os.makedirs(self.logdir)
@@ -139,10 +141,17 @@ class World(object):
         ret = False
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
+                ret = True
                 if event.key == pygame.K_ESCAPE:
                     if len(self.accuracy)>0:
                         self.do_stats()
                     self.cleanup()
+                elif event.key == pygame.K_s:
+                    pygame.image.save(self.screen, "screenshot%d.jpeg" % (self.screenshot))
+                    self.screenshot += 1
+                    ret = False
+                elif self.state == -1:
+                    self.state = 0
                 elif self.state == 5:
                     if event.key == pygame.K_LEFT or event.key == pygame.K_UP or event.key == pygame.K_RIGHT:
                         self.trial_stop = -1
@@ -177,7 +186,6 @@ class World(object):
                             self.output.write("EVENT_USER\tRESULT\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t%s\t%d\t%d\n" % tuple(result))
                         self.output.write("EVENT_SYSTEM\tTRIAL_END\n")
                         self.accuracy.append(result)
-                ret = True
             elif event.type == self.EVENT_HIDE_FIX:
                 self.output.write("EVENT_SYSTEM\tHIDE_FIX\n")
                 pygame.time.set_timer(self.EVENT_HIDE_FIX, 0)
@@ -208,7 +216,9 @@ class World(object):
 
     def draw_world(self):
         self.clear()
-        if self.state == 1 or self.state == 2:
+        if self.state == -1:
+            self.show_intro()
+        elif self.state == 1 or self.state == 2:
             self.draw_fixation_circle()
         elif self.state == 3:
             self.draw_cue(self.loc1, self.size)
@@ -252,7 +262,6 @@ class World(object):
     def show_intro(self):
         ifont1 = pygame.font.Font(None, 34)
         ifont2 = pygame.font.Font(None, 24)
-        self.clear()
         self.draw_text(u'\u25A0', self.demo_font, self.colors[0], (self.center_x/2,self.center_y/8*4))
         self.draw_text('Look away from cue!', ifont1, (255,255,255), (self.center_x/2,self.center_y/8*6.5))
         self.draw_text(u'\u25A0', self.demo_font, self.colors[1], (self.center_x+self.center_x/2,self.center_y/8*4))
@@ -262,7 +271,6 @@ class World(object):
         intro_rect.centerx = self.center_x
         intro_rect.centery = int(self.center_y / 2 * 3) 
         self.worldsurf.blit(intro, intro_rect)
-        self.update_world()
 
     def do_stats(self):
         pass
@@ -270,17 +278,17 @@ class World(object):
     def run(self):
         self.state = -1
         if self.eg:
-            self.eg.calibrate(self.screen)  
-	    self.eg.data_start()
-        self.show_intro()
-        while not self.process_events(): pass
-        self.state = 0
+            self.state = -2
         if self.eg:
             self.output.write('event_type\tevent_details\ttrial\tmode\tcenter_x\tcenter_y\toffset\tfix_delay\tcue_size\tcue_side\ttarget_time\ttarget\tresponse\tcorrect\trt\t1st_saccade_direction\t1st_saccade_latency\tgaze_found\ttimestamp\ttrial_time\tgaze_x\tgaze_y\n')
         else:
             self.output.write('event_type\tevent_details\ttrial\tmode\tcenter_x\tcenter_y\toffset\tfix_delay\tcue_size\tcue_side\ttarget_time\ttarget\tresponse\tcorrect\trt\n')
         while True:
-            if self.state == 0:
+            if self.state == -2:
+                self.eg.calibrate(self.screen)
+                self.state = -1
+                self.eg.data_start()
+            elif self.state == 0:
                 self.generate_trial()
                 self.output.write("EVENT_SYSTEM\tTRIAL_START\n")
                 if self.eg:
