@@ -124,7 +124,7 @@ class World(object):
                       self.cue_side, self.mask_time-self.target_time,
                       self.arrow_text[self.answer],eg_data.gaze_found,eg_data.timestamp,
                       eg_data.timestamp-self.trial_start,int(eg_data.gaze_x),int(eg_data.gaze_y)]
-            self.output.write("EVENT_EYEGAZE\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t\t\t\t\t\t%d\t%f\t%f\t%d\t%d\n" % tuple(result))
+            self.output.write("EVENT_EYEGAZE\tSAMPLE\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t\t\t\t\t\t%d\t%f\t%f\t%d\t%d\n" % tuple(result))
         if self.cue_time > 0:
             if eg_data.eye_motion_state == 2 and self.saccade_latency == 0:
                 self.saccade_latency = pygame.time.get_ticks() - self.cue_time
@@ -172,27 +172,31 @@ class World(object):
                         if self.eg:
                             result.append(self.saccade_direction)
                             result.append(self.saccade_latency)
-                            self.output.write("EVENT_TASK\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t%s\t%d\t%d\t%s\t%d\n" % tuple(result))
+                            self.output.write("EVENT_USER\tRESULT\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t%s\t%d\t%d\t%s\t%d\n" % tuple(result))
                         else:
-                            self.output.write("EVENT_TASK\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t%s\t%d\t%d\n" % tuple(result))
+                            self.output.write("EVENT_USER\tRESULT\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t%s\t%d\t%d\n" % tuple(result))
+                        self.output.write("EVENT_SYSTEM\tTRIAL_END\n")
                         self.accuracy.append(result)
                 ret = True
             elif event.type == self.EVENT_HIDE_FIX:
+                self.output.write("EVENT_SYSTEM\tHIDE_FIX\n")
                 pygame.time.set_timer(self.EVENT_HIDE_FIX, 0)
                 self.show_fix = False
             elif event.type == self.EVENT_SHOW_CUE:
+                self.output.write("EVENT_SYSTEM\tSHOW_CUE\n")
                 pygame.time.set_timer(self.EVENT_SHOW_CUE, 0)
                 self.state = 3
                 pygame.time.set_timer(self.EVENT_SHOW_ARROW, 400)
                 self.cue_time = pygame.time.get_ticks()
                 self.trial_start = -1
-
             elif event.type == self.EVENT_SHOW_ARROW:
+                self.output.write("EVENT_SYSTEM\tSHOW_ARROW\n")
                 pygame.time.set_timer(self.EVENT_SHOW_ARROW, 0)
                 self.state = 4
                 pygame.time.set_timer(self.EVENT_SHOW_MASK, 150)
                 self.target_time = pygame.time.get_ticks()
             elif event.type == self.EVENT_SHOW_MASK:
+                self.output.write("EVENT_SYSTEM\tSHOW_MASK\n")
                 pygame.time.set_timer(self.EVENT_SHOW_MASK, 0)
                 self.state = 5
 		self.mask_time = pygame.time.get_ticks()
@@ -272,12 +276,13 @@ class World(object):
         while not self.process_events(): pass
         self.state = 0
         if self.eg:
-            self.output.write('event_type\ttrial\tmode\tcenter_x\tcenter_y\toffset\tfix_delay\tcue_size\tcue_side\ttarget_time\ttarget\tresponse\tcorrect\trt\t1st_saccade_direction\t1st_saccade_latency\tgaze_found\ttimestamp\ttrial_time\tgaze_x\tgaze_y\n')
+            self.output.write('event_type\tevent_details\ttrial\tmode\tcenter_x\tcenter_y\toffset\tfix_delay\tcue_size\tcue_side\ttarget_time\ttarget\tresponse\tcorrect\trt\t1st_saccade_direction\t1st_saccade_latency\tgaze_found\ttimestamp\ttrial_time\tgaze_x\tgaze_y\n')
         else:
-            self.output.write('event_type\ttrial\tmode\tcenter_x\tcenter_y\toffset\tfix_delay\tcue_size\tcue_side\ttarget_time\ttarget\tresponse\tcorrect\trt\n')
+            self.output.write('event_type\tevent_details\ttrial\tmode\tcenter_x\tcenter_y\toffset\tfix_delay\tcue_size\tcue_side\ttarget_time\ttarget\tresponse\tcorrect\trt\n')
         while True:
             if self.state == 0:
                 self.generate_trial()
+                self.output.write("EVENT_SYSTEM\tTRIAL_START\n")
                 if self.eg:
                     self.state = 1
                 else:
