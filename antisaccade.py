@@ -184,23 +184,27 @@ class World(object):
                             self.output.write("%d\tEVENT_TASK\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t%s\t%d\t%d\t%s\t%d\n" % tuple(result))
                         else:
                             self.output.write("%d\tEVENT_TASK\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t%s\t%d\t%d\n" % tuple(result))
+                        self.output.write("%d\tEVENT_SYSTEM\tTRIAL_END\n" % (pygame.time.get_ticks()))
                         self.accuracy.append(result)
             elif event.type == self.EVENT_HIDE_FIX:
+                self.output.write("%d\tEVENT_SYSTEM\tHIDE_FIX\n" % (pygame.time.get_ticks()))
                 pygame.time.set_timer(self.EVENT_HIDE_FIX, 0)
                 self.show_fix = False
             elif event.type == self.EVENT_SHOW_CUE:
+                self.output.write("%d\tEVENT_SYSTEM\tSHOW_CUE\n" % (pygame.time.get_ticks()))
                 pygame.time.set_timer(self.EVENT_SHOW_CUE, 0)
                 self.state = 3
                 pygame.time.set_timer(self.EVENT_SHOW_ARROW, 400)
                 self.cue_time = pygame.time.get_ticks()
                 self.trial_start = -1
-
             elif event.type == self.EVENT_SHOW_ARROW:
+                self.output.write("%d\tEVENT_SYSTEM\tSHOW_ARROW\n" % (pygame.time.get_ticks()))
                 pygame.time.set_timer(self.EVENT_SHOW_ARROW, 0)
                 self.state = 4
                 pygame.time.set_timer(self.EVENT_SHOW_MASK, 150)
                 self.target_time = pygame.time.get_ticks()
             elif event.type == self.EVENT_SHOW_MASK:
+                self.output.write("%d\tEVENT_SYSTEM\tSHOW_MASK\n" % (pygame.time.get_ticks()))
                 pygame.time.set_timer(self.EVENT_SHOW_MASK, 0)
                 self.state = 5
 		self.mask_time = pygame.time.get_ticks()
@@ -286,6 +290,7 @@ class World(object):
                 self.eg.data_start()
             elif self.state == 0:
                 self.generate_trial()
+                self.output.write("%d\tEVENT_SYSTEM\tTRIAL_START\n" % (pygame.time.get_ticks()))
                 if self.eg:
                     self.state = 1
                 else:
