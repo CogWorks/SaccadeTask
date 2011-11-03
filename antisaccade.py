@@ -86,7 +86,7 @@ class World(object):
         self.mode_text = ''
         
         self.trial = 0
-        self.cue_time = self.trial_stop = self.trial_start = 0
+        self.target_time = self.mask_time = self.cue_time = self.trial_stop = self.trial_start = 0
 
     def get_fixation_interval(self):
         return randrange(1500,3500,1)
@@ -124,10 +124,9 @@ class World(object):
             result = [self.trial,self.mode_text, self.center_x, self.center_y,
                       self.offset, self.fix_delay, self.obj_widths[self.size],
                       self.cue_side, self.mask_time-self.target_time,
-                      self.arrow_text[self.answer], '','','','','',
-                      eg_data.gaze_found,eg_data.timestamp, eg_data.timestamp-self.trial_start,
-                      int(eg_data.gaze_x),int(eg_data.gaze_y)]
-            self.output.write("EVENT_EYEGAZE\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t%s\t%d\t%d\t%s\t%d\t%d\t%f\t%f\t%d\t%d\n" % tuple(result))
+                      self.arrow_text[self.answer],eg_data.gaze_found,eg_data.timestamp,
+                      eg_data.timestamp-self.trial_start,int(eg_data.gaze_x),int(eg_data.gaze_y)]
+            self.output.write("EVENT_EYEGAZE\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t\t\t\t\t\t%d\t%f\t%f\t%d\t%d\n" % tuple(result))
         if self.cue_time > 0:
             if eg_data.eye_motion_state == 2 and self.saccade_latency == 0:
                 self.saccade_latency = pygame.time.get_ticks() - self.cue_time
@@ -250,11 +249,8 @@ class World(object):
         self.answer = choice([2,1,0])
         self.size = 0#choice([2,1,0])
         self.fix_color = (255,255,0)
-        self.cue_time = 0
-        self.target_time = 0
+        self.target_time = self.mask_time = self.cue_time = self.trial_stop = self.trial_start = 0
         self.trial += 1
-        self.trial_start = 0
-        self.trial_stop = 0
         self.cue_side = 'left'
         if self.loc1 > self.center_x:
             self.cue_side = 'right'
@@ -340,7 +336,6 @@ class World(object):
         if self.args.logfile:
             self.output.close()
         if self.eg:
-            self.eg_output.close()
             self.eg.disconnect()
         sys.exit()
 
