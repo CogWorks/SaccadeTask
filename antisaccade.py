@@ -73,8 +73,8 @@ class World(object):
         self.cue_fonts = [pygame.font.Font(self.fontname, self.obj_widths[0]),
                           pygame.font.Font(self.fontname, self.obj_widths[1]),
                           pygame.font.Font(self.fontname, self.obj_widths[2])]
-        self.arrows = [u'\u25B6',u'\u25B2',u'\u25C0']
-        self.arrow_text = ['>','^','<']
+        self.arrows = ['',u'\u25B6',u'\u25B2',u'\u25C0']
+        self.arrow_text = ['','>','^','<']
         self.clock = pygame.time.Clock()
         self.accuracy = []
 
@@ -86,7 +86,8 @@ class World(object):
         self.mode_text = ''
         
         self.trial = 0
-        self.target_time = self.mask_time = self.cue_time = self.trial_stop = self.trial_start = 0
+        self.size = self.cue_side = self.fix_delay = -1
+        self.answer = self.target_time = self.mask_time = self.cue_time = self.trial_stop = self.trial_start = 0
 
     def get_fixation_interval(self):
         return randrange(1500,3500,1)
@@ -128,11 +129,15 @@ class World(object):
                       eg_data.timestamp-self.trial_start,int(eg_data.gaze_x),int(eg_data.gaze_y)]
             self.output.write("%d\tEVENT_LC\tSAMPLE_IN\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t\t\t\t\t\t%d\t%f\t%f\t%d\t%d\n" % tuple(result))
         else:
+            result = [pygame.time.get_ticks(), self.trial,self.mode_text, self.center_x, self.center_y,
+                      self.offset, self.fix_delay, self.obj_widths[self.size],
+                      self.cue_side, self.mask_time-self.target_time,
+                      self.arrow_text[self.answer],eg_data.gaze_found,eg_data.timestamp,
+                      eg_data.timestamp-self.trial_start,int(eg_data.gaze_x),int(eg_data.gaze_y)]
             self.output.write("%d\tEVENT_LC\tSAMPLE_OUT\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t\t\t\t\t\t%d\t%f\t%f\t%d\t%d\n" % tuple(result))
         if self.cue_time > 0:
             if eg_data.eye_motion_state == 2 and self.saccade_latency == 0:
                 self.saccade_latency = pygame.time.get_ticks() - self.cue_time
-                print eg_data.timestamp, eg_data.fix_x, eg_data.fix_y
             elif self.saccade_latency > 0 and self.saccade_direction == 'none':
                 if eg_data.gaze_x < self.center_x:
                     self.saccade_direction = 'left'
@@ -233,6 +238,8 @@ class World(object):
         self.update_world()
 
     def generate_trial(self):
+        self.size = self.cue_side = self.fix_delay = -1
+        self.answer = self.target_time = self.mask_time = self.cue_time = self.trial_stop = self.trial_start = 0
         self.show_fix = True
         self.fix_shape = u'\u25CB'
         self.loc1, self.loc2 = sample(self.offsets,2)
@@ -252,10 +259,9 @@ class World(object):
             else:
                 self.mode_text = 'anti'
                 self.bgcolor = self.colors[0]
-        self.answer = choice([2,1,0])
+        self.answer = choice([3,2,1])
         self.size = 0#choice([2,1,0])
         self.fix_color = (255,255,0)
-        self.target_time = self.mask_time = self.cue_time = self.trial_stop = self.trial_start = 0
         self.trial += 1
         self.cue_side = 'left'
         if self.loc1 > self.center_x:
@@ -322,19 +328,21 @@ class World(object):
                     xdiff = abs(self.eg.fix_data.fix_x-self.center_x)
                     ydiff = abs(self.eg.fix_data.fix_y-self.center_y)
                     if xdiff > self.center_y / 16 or ydiff > self.center_y / 16:
-                        sys.stderr.write('False start, resetting trial.\n')
+                        #sys.stderr.write('False start, resetting trial.\n')
                         pygame.time.set_timer(self.EVENT_SHOW_CUE, 0)
                         pygame.time.set_timer(self.EVENT_HIDE_FIX, 0)
                         self.state = 1
                         self.fix_color = (255,0,0)
                         self.fix_shape = u'\u25CB'
+                        self.show_fix = True
                 elif not self.eg.eg_data.gaze_found:
-                    sys.stderr.write('Lost gaze, resetting trial.\n')
+                    #sys.stderr.write('Lost gaze, resetting trial.\n')
                     pygame.time.set_timer(self.EVENT_SHOW_CUE, 0)
                     pygame.time.set_timer(self.EVENT_HIDE_FIX, 0)
                     self.state = 1
                     self.fix_color = (255,0,0)
                     self.fix_shape = u'\u25CB'
+                    self.show_fix = True
             self.clock.tick(30)
             self.process_events()
             self.draw_world()
