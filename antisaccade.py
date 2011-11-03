@@ -328,6 +328,7 @@ class World(object):
                     xdiff = abs(self.eg.fix_data.fix_x-self.center_x)
                     ydiff = abs(self.eg.fix_data.fix_y-self.center_y)
                     if xdiff > self.center_y / 16 or ydiff > self.center_y / 16:
+                        self.output.write("%f\tEVENT_SYSTEM\tTRIAL_RESET\n" % (time.clock()))
                         #sys.stderr.write('False start, resetting trial.\n')
                         pygame.time.set_timer(self.EVENT_SHOW_CUE, 0)
                         pygame.time.set_timer(self.EVENT_HIDE_FIX, 0)
@@ -336,6 +337,7 @@ class World(object):
                         self.fix_shape = u'\u25CB'
                         self.show_fix = True
                 elif not self.eg.eg_data.gaze_found:
+                    self.output.write("%f\tEVENT_SYSTEM\tTRIAL_RESET\n" % (time.clock()))
                     #sys.stderr.write('Lost gaze, resetting trial.\n')
                     pygame.time.set_timer(self.EVENT_SHOW_CUE, 0)
                     pygame.time.set_timer(self.EVENT_HIDE_FIX, 0)
