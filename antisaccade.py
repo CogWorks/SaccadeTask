@@ -122,22 +122,22 @@ class World(object):
         if self.trial_start != 0 and self.trial_stop == 0:
             if self.trial_start == -1:
                 self.trial_start = eg_data.timestamp
-            result = [pygame.time.get_ticks(), self.trial,self.mode_text, self.center_x, self.center_y,
+            result = [time.clock(), self.trial,self.mode_text, self.center_x, self.center_y,
                       self.offset, self.fix_delay, self.obj_widths[self.size],
-                      self.cue_side, self.mask_time-self.target_time,
+                      self.cue_side, -1,
                       self.arrow_text[self.answer],eg_data.gaze_found,eg_data.timestamp,
                       eg_data.timestamp-self.trial_start,int(eg_data.gaze_x),int(eg_data.gaze_y)]
-            self.output.write("%d\tEVENT_LC\tSAMPLE_IN\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t\t\t\t\t\t%d\t%f\t%f\t%d\t%d\n" % tuple(result))
+            self.output.write("%f\tEVENT_LC\tSAMPLE_IN\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t\t\t\t\t\t%d\t%f\t%f\t%d\t%d\n" % tuple(result))
         else:
-            result = [pygame.time.get_ticks(), self.trial,self.mode_text, self.center_x, self.center_y,
+            result = [time.clock(), self.trial,self.mode_text, self.center_x, self.center_y,
                       self.offset, self.fix_delay, self.obj_widths[self.size],
                       self.cue_side, self.mask_time-self.target_time,
                       self.arrow_text[self.answer],eg_data.gaze_found,eg_data.timestamp,
                       eg_data.timestamp-self.trial_start,int(eg_data.gaze_x),int(eg_data.gaze_y)]
-            self.output.write("%d\tEVENT_LC\tSAMPLE_OUT\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t\t\t\t\t\t%d\t%f\t%f\t%d\t%d\n" % tuple(result))
+            self.output.write("%f\tEVENT_LC\tSAMPLE_OUT\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t\t\t\t\t\t%d\t%f\t%f\t%d\t%d\n" % tuple(result))
         if self.cue_time > 0:
             if eg_data.eye_motion_state == 2 and self.saccade_latency == 0:
-                self.saccade_latency = pygame.time.get_ticks() - self.cue_time
+                self.saccade_latency = time.clock() - self.cue_time
             elif self.saccade_latency > 0 and self.saccade_direction == 'none':
                 if eg_data.gaze_x < self.center_x:
                     self.saccade_direction = 'left'
@@ -162,59 +162,59 @@ class World(object):
                 elif self.state == 5:
                     if event.key == pygame.K_LEFT or event.key == pygame.K_UP or event.key == pygame.K_RIGHT:
                         self.trial_stop = -1
-                        rt = pygame.time.get_ticks() - self.target_time
-                        result = [pygame.time.get_ticks(), self.trial, self.mode_text, self.center_x, self.center_y, self.offset, self.fix_delay, self.obj_widths[self.size], self.cue_side, self.mask_time-self.target_time, self.arrow_text[self.answer]]
+                        rt = time.clock() - self.target_time
+                        result = [time.clock(), self.trial, self.mode_text, self.center_x, self.center_y, self.offset, self.fix_delay, self.obj_widths[self.size], self.cue_side, self.mask_time-self.target_time, self.arrow_text[self.answer]]
                         if event.key == pygame.K_LEFT:
                             result.append('<')
-                            if self.answer == 2:
+                            if self.answer == 3:
                                 result.append(1)
                             else:
                                 result.append(0)
                         elif event.key == pygame.K_UP:
                             result.append('^')
-                            if self.answer == 1:
+                            if self.answer == 2:
                                 result.append(1)
                             else:
                                 result.append(0)
                         elif event.key == pygame.K_RIGHT:
                             result.append('>')
-                            if self.answer == 0:
+                            if self.answer == 1:
                                 result.append(1)
                             else:
                                 result.append(0)
                         result.append(rt)
-                        self.trial_stop = pygame.time.get_ticks()
+                        self.trial_stop = time.clock()
                         self.state = 0
                         if self.eg:
                             result.append(self.saccade_direction)
                             result.append(self.saccade_latency)
-                            self.output.write("%d\tEVENT_TASK\tRESULT\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t%s\t%d\t%d\t%s\t%d\n" % tuple(result))
+                            self.output.write("%f\tEVENT_SYSTEM\tRESULT\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t%s\t%d\t%d\t%s\t%d\n" % tuple(result))
                         else:
-                            self.output.write("%d\tEVENT_TASK\tRESULT\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t%s\t%d\t%d\n" % tuple(result))
-                        self.output.write("%d\tEVENT_SYSTEM\tTRIAL_END\n" % (pygame.time.get_ticks()))
+                            self.output.write("%f\tEVENT_SYSTEM\tRESULT\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t%s\t%d\t%d\n" % tuple(result))
+                        self.output.write("%f\tEVENT_SYSTEM\tTRIAL_END\n" % (time.clock()))
                         self.accuracy.append(result)
             elif event.type == self.EVENT_HIDE_FIX:
-                self.output.write("%d\tEVENT_SYSTEM\tHIDE_FIX\n" % (pygame.time.get_ticks()))
+                self.output.write("%f\tEVENT_SYSTEM\tHIDE_FIX\n" % (time.clock()))
                 pygame.time.set_timer(self.EVENT_HIDE_FIX, 0)
                 self.show_fix = False
             elif event.type == self.EVENT_SHOW_CUE:
-                self.output.write("%d\tEVENT_SYSTEM\tSHOW_CUE\n" % (pygame.time.get_ticks()))
+                self.output.write("%f\tEVENT_SYSTEM\tSHOW_CUE\n" % (time.clock()))
                 pygame.time.set_timer(self.EVENT_SHOW_CUE, 0)
                 self.state = 3
                 pygame.time.set_timer(self.EVENT_SHOW_ARROW, 400)
-                self.cue_time = pygame.time.get_ticks()
+                self.cue_time = time.clock()
                 self.trial_start = -1
             elif event.type == self.EVENT_SHOW_ARROW:
-                self.output.write("%d\tEVENT_SYSTEM\tSHOW_ARROW\n" % (pygame.time.get_ticks()))
+                self.output.write("%f\tEVENT_SYSTEM\tSHOW_ARROW\n" % (time.clock()))
                 pygame.time.set_timer(self.EVENT_SHOW_ARROW, 0)
                 self.state = 4
                 pygame.time.set_timer(self.EVENT_SHOW_MASK, 150)
-                self.target_time = pygame.time.get_ticks()
+                self.target_time = time.clock()
             elif event.type == self.EVENT_SHOW_MASK:
-                self.output.write("%d\tEVENT_SYSTEM\tSHOW_MASK\n" % (pygame.time.get_ticks()))
+                self.output.write("%f\tEVENT_SYSTEM\tSHOW_MASK\n" % (time.clock()))
                 pygame.time.set_timer(self.EVENT_SHOW_MASK, 0)
                 self.state = 5
-		self.mask_time = pygame.time.get_ticks()
+		self.mask_time = time.clock()
         return ret
 
     def draw_fix(self):
@@ -288,9 +288,9 @@ class World(object):
         if self.eg:
             self.state = -2
         if self.eg:
-            self.output.write('ticks\tevent_type\tevent_details\ttrial\tmode\tcenter_x\tcenter_y\toffset\tfix_delay\tcue_size\tcue_side\ttarget_time\ttarget\tresponse\tcorrect\trt\t1st_saccade_direction\t1st_saccade_latency\tgaze_found\ttimestamp\ttrial_time\tgaze_x\tgaze_y\n')
+            self.output.write('clock\tevent_type\tevent_details\ttrial\tmode\tcenter_x\tcenter_y\toffset\tfix_delay\tcue_size\tcue_side\ttarget_time\ttarget\tresponse\tcorrect\trt\t1st_saccade_direction\t1st_saccade_latency\tgaze_found\ttimestamp\ttrial_time\tgaze_x\tgaze_y\n')
         else:
-            self.output.write('ticks\tevent_type\tevent_details\ttrial\tmode\tcenter_x\tcenter_y\toffset\tfix_delay\tcue_size\tcue_side\ttarget_time\ttarget\tresponse\tcorrect\trt\n')
+            self.output.write('clock\tevent_type\tevent_details\ttrial\tmode\tcenter_x\tcenter_y\toffset\tfix_delay\tcue_size\tcue_side\ttarget_time\ttarget\tresponse\tcorrect\trt\n')
         while True:
             if self.state == -2:
                 self.eg.calibrate(self.screen)
@@ -298,7 +298,7 @@ class World(object):
                 self.eg.data_start()
             elif self.state == 0:
                 self.generate_trial()
-                self.output.write("%d\tEVENT_SYSTEM\tTRIAL_START\n" % (pygame.time.get_ticks()))
+                self.output.write("%f\tEVENT_SYSTEM\tTRIAL_START\n" % (time.clock()))
                 if self.eg:
                     self.state = 1
                 else:
