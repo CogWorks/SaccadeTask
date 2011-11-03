@@ -87,7 +87,7 @@ class World(object):
         
         self.trial = 0
         self.size = self.cue_side = self.fix_delay = -1
-        self.answer = self.target_time = self.mask_time = self.cue_time = self.trial_stop = self.trial_start = 0
+        self.answer = self.mask_time = self.cue_time = self.trial_stop = self.trial_start = 0
 
     def get_fixation_interval(self):
         return randrange(1500,3500,1)
@@ -124,17 +124,15 @@ class World(object):
                 self.trial_start = eg_data.timestamp
             result = [time.clock(), self.trial,self.mode_text, self.center_x, self.center_y,
                       self.offset, self.fix_delay, self.obj_widths[self.size],
-                      self.cue_side, -1,
-                      self.arrow_text[self.answer],eg_data.gaze_found,eg_data.timestamp,
+                      self.cue_side, self.arrow_text[self.answer],eg_data.gaze_found,eg_data.timestamp,
                       eg_data.timestamp-self.trial_start,int(eg_data.gaze_x),int(eg_data.gaze_y)]
-            self.output.write("%f\tEVENT_LC\tSAMPLE_IN\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t\t\t\t\t\t%d\t%f\t%f\t%d\t%d\n" % tuple(result))
+            self.output.write("%f\tEVENT_LC\tSAMPLE_IN\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%s\t%s\t\t\t\t\t\t%d\t%f\t%f\t%d\t%d\n" % tuple(result))
         else:
             result = [time.clock(), self.trial,self.mode_text, self.center_x, self.center_y,
                       self.offset, self.fix_delay, self.obj_widths[self.size],
-                      self.cue_side, self.mask_time-self.target_time,
-                      self.arrow_text[self.answer],eg_data.gaze_found,eg_data.timestamp,
+                      self.cue_side, self.arrow_text[self.answer],eg_data.gaze_found,eg_data.timestamp,
                       eg_data.timestamp-self.trial_start,int(eg_data.gaze_x),int(eg_data.gaze_y)]
-            self.output.write("%f\tEVENT_LC\tSAMPLE_OUT\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t\t\t\t\t\t%d\t%f\t%f\t%d\t%d\n" % tuple(result))
+            self.output.write("%f\tEVENT_LC\tSAMPLE_OUT\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%s\t%s\t\t\t\t\t\t%d\t%f\t%f\t%d\t%d\n" % tuple(result))
         if self.cue_time > 0:
             if eg_data.eye_motion_state == 2 and self.saccade_latency == 0:
                 self.saccade_latency = time.clock() - self.cue_time
@@ -163,7 +161,7 @@ class World(object):
                     if event.key == pygame.K_LEFT or event.key == pygame.K_UP or event.key == pygame.K_RIGHT:
                         self.trial_stop = -1
                         rt = time.clock() - self.target_time
-                        result = [time.clock(), self.trial, self.mode_text, self.center_x, self.center_y, self.offset, self.fix_delay, self.obj_widths[self.size], self.cue_side, self.mask_time-self.target_time, self.arrow_text[self.answer]]
+                        result = [time.clock(), self.trial, self.mode_text, self.center_x, self.center_y, self.offset, self.fix_delay, self.obj_widths[self.size], self.cue_side, self.arrow_text[self.answer]]
                         if event.key == pygame.K_LEFT:
                             result.append('<')
                             if self.answer == 3:
@@ -188,9 +186,9 @@ class World(object):
                         if self.eg:
                             result.append(self.saccade_direction)
                             result.append(self.saccade_latency)
-                            self.output.write("%f\tEVENT_SYSTEM\tRESULT\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t%s\t%d\t%d\t%s\t%d\n" % tuple(result))
+                            self.output.write("%f\tEVENT_SYSTEM\tRESULT\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%s\t%s\t%s\t%d\t%f\t%s\t%d\n" % tuple(result))
                         else:
-                            self.output.write("%f\tEVENT_SYSTEM\tRESULT\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%s\t%s\t%d\t%d\n" % tuple(result))
+                            self.output.write("%f\tEVENT_SYSTEM\tRESULT\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%s\t%s\t%s\t%d\t%f\n" % tuple(result))
                         self.output.write("%f\tEVENT_SYSTEM\tTRIAL_END\n" % (time.clock()))
                         self.accuracy.append(result)
             elif event.type == self.EVENT_HIDE_FIX:
@@ -288,9 +286,9 @@ class World(object):
         if self.eg:
             self.state = -2
         if self.eg:
-            self.output.write('clock\tevent_type\tevent_details\ttrial\tmode\tcenter_x\tcenter_y\toffset\tfix_delay\tcue_size\tcue_side\ttarget_time\ttarget\tresponse\tcorrect\trt\t1st_saccade_direction\t1st_saccade_latency\tgaze_found\ttimestamp\ttrial_time\tgaze_x\tgaze_y\n')
+            self.output.write('clock\tevent_type\tevent_details\ttrial\tmode\tcenter_x\tcenter_y\toffset\tfix_delay\tcue_size\tcue_side\ttarget\tresponse\tcorrect\trt\t1st_saccade_direction\t1st_saccade_latency\tgaze_found\ttimestamp\ttrial_time\tgaze_x\tgaze_y\n')
         else:
-            self.output.write('clock\tevent_type\tevent_details\ttrial\tmode\tcenter_x\tcenter_y\toffset\tfix_delay\tcue_size\tcue_side\ttarget_time\ttarget\tresponse\tcorrect\trt\n')
+            self.output.write('clock\tevent_type\tevent_details\ttrial\tmode\tcenter_x\tcenter_y\toffset\tfix_delay\tcue_size\tcue_side\ttarget\tresponse\tcorrect\trt\n')
         while True:
             if self.state == -2:
                 self.eg.calibrate(self.screen)
