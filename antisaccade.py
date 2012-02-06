@@ -23,6 +23,8 @@ class World(object):
         self.bgcolor = (0,0,0)
         self.fix_shape = u'\u25CB'
         
+        self.trialPool = self.generateTrialPool()
+
         self.args = args
         self.subjectInfo = subjectInfo
         
@@ -90,6 +92,14 @@ class World(object):
         self.trial = 0
         self.size = self.cue_side = self.fix_delay = -1
         self.answer = self.mask_time = self.cue_time = self.trial_stop = self.trial_start = 0
+
+    def generateTrialPool(self):
+        return sample([1,2,3,4] * 10, 40)
+
+    def getNextPoolTrial(self):
+        if len(self.trialPool) < 1:
+            self.trialPool = self.generateTrialPool()
+        return self.trialPool.pop()
 
     def get_fixation_interval(self):
         return randrange(1500,3500,1)
@@ -242,30 +252,46 @@ class World(object):
         self.answer = self.target_time = self.mask_time = self.cue_time = self.trial_stop = self.trial_start = 0
         self.show_fix = True
         self.fix_shape = u'\u25CB'
-        self.loc1, self.loc2 = sample(self.offsets,2)
-        self.mode_text = 'anti'
         self.saccade_latency = 0
         self.saccade_direction = 'none'
-        self.bgcolor = self.colors[0]
-        if self.args.mode == 'pro':
-            self.bgcolor = self.colors[1]
-            self.loc2 = self.loc1
-            self.mode_text = 'anti'
-        elif self.args.mode == 'random':
-            self.loc2 = sample(self.offsets,1)[0]
-            if self.loc1 == self.loc2:
-                self.mode_text = 'pro'
-                self.bgcolor = self.colors[1]
-            else:
-                self.mode_text = 'anti'
-                self.bgcolor = self.colors[0]
         self.answer = choice([3,2,1])
         self.size = 0#choice([2,1,0])
         self.fix_color = (255,255,0)
-        self.trial += 1
+        if self.args.balanced:
+            trial = self.getNextPoolTrial()
+            if trial < 3:
+                self.loc1 = self.offsets[0]
+                self.loc2 = self.offsets[1]
+            else:
+                self.loc1 = self.offsets[1]
+                self.loc2 = self.offsets[0]
+            if trial % 2 == 0:
+                self.mode_text = 'anti'
+                self.bgcolor = self.colors[0]
+            else:
+                self.mode_text = 'pro'
+                self.bgcolor = self.colors[1]
+                self.loc2 = self.loc1
+        else:
+            self.loc1, self.loc2 = sample(self.offsets,2)
+            self.mode_text = 'anti'
+            self.bgcolor = self.colors[0]
+            if self.args.mode == 'pro':
+                self.bgcolor = self.colors[1]
+                self.loc2 = self.loc1
+                self.mode_text = 'anti'
+            elif self.args.mode == 'random':
+                self.loc2 = sample(self.offsets,1)[0]
+                if self.loc1 == self.loc2:
+                    self.mode_text = 'pro'
+                    self.bgcolor = self.colors[1]
+                else:
+                    self.mode_text = 'anti'
+                    self.bgcolor = self.colors[0]
         self.cue_side = 'left'
         if self.loc1 > self.center_x:
             self.cue_side = 'right'
+        self.trial += 1
 
     def show_intro(self):
         ifont1 = pygame.font.Font(None, 34)
