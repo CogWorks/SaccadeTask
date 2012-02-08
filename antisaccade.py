@@ -38,7 +38,7 @@ class World(object):
             eid = rin2id(subjectInfo['rin'])
             subjectInfo['encrypted_rin'] = eid
             subjectInfo['cipher'] = 'AES/CBC (RIJNDAEL) - 16Byte Key'
-            self.log_basename = cwsubject.makeLogFileBase(eid[:8])
+            self.log_basename = cwsubject.makeLogFileBase('SaccadeTask_'+eid[:8])
             cwsubject.writeHistoryFile(os.path.join(self.logdir,self.log_basename), self.subjectInfo)
             self.output = open(os.path.join(self.logdir,self.log_basename)+'.log', 'w')
         else:
@@ -390,6 +390,7 @@ if __name__ == '__main__':
     parser.add_argument('-a', '--arrowsize', action="store", dest="arrowsize", default=0.07, help='Arrow size in terms of fraction of screen height.')
     parser.add_argument('-m', '--mode', action="store", dest="mode", default='random', help='Run in pro-saccade mode instead of anti-saccade mode.')
     parser.add_argument('-b', '--balanced', action="store_true", dest="balanced", help='Counter-balance trials.')
+    parser.add_argument('-B', '--blocks', action="store", dest="blocks", default=8, help='Number of blocks to run in balanced mode.')
     parser.add_argument('-D', '--logdir', action="store", dest="logdir", default='data', help='Log dir')
     parser.add_argument('-n', '--nogap', action="store_true", dest="nogap", help="Don't do gap trials")
     parser.add_argument('-c', '--color', action="store_true", dest="color", help='Set to switch anti/pro bg colors.')
