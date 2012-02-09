@@ -17,15 +17,22 @@ class World(object):
     def __init__(self, args, subjectInfo):
         super(World, self).__init__()
         
+        self.args = args
+
         self.colors = [(204,255,102),(255,153,255)]
         if args.color:
             self.colors = self.colors[::-1]
         self.bgcolor = (0,0,0)
         self.fix_shape = u'\u25CB'
-        
-        self.trialPool = self.generateTrialPool()
 
-        self.args = args
+        self.replicates = 10
+        self.trialPool = self.generateTrialPool(self.replicates)
+        self.blockLength = len(self.trialPool)
+        self.lastTrial = self.blockLength * int(self.args.blocks)
+        self.colorSetup = 1
+        if self.args.color:
+            self.colorSetup = 2
+
         self.subjectInfo = subjectInfo
         
         self.screenshot = 1
@@ -93,12 +100,12 @@ class World(object):
         self.size = self.cue_side = self.fix_delay = -1
         self.answer = self.mask_time = self.cue_time = self.trial_stop = self.trial_start = 0
 
-    def generateTrialPool(self):
-        return sample([1,2,3,4] * 10, 40)
+    def generateTrialPool(self, n):
+        return sample([1,2,3,4] * n, 4*n)
 
     def getNextPoolTrial(self):
         if len(self.trialPool) < 1:
-            self.trialPool = self.generateTrialPool()
+            self.trialPool = self.generateTrialPool(self.replicates)
         return self.trialPool.pop()
 
     def get_fixation_interval(self):
@@ -173,7 +180,7 @@ class World(object):
                     if event.key == pygame.K_LEFT or event.key == pygame.K_UP or event.key == pygame.K_RIGHT:
                         self.trial_stop = -1
                         rt = time.clock() - self.target_time
-                        result = [time.clock(), self.trial, self.mode_text, self.center_x, self.center_y, self.offset, self.fix_delay, self.obj_widths[self.size], self.cue_side, self.arrow_text[self.answer]]
+                        result = [time.clock(), self.trial, self.mode_text, self.colorSetup, self.center_x, self.center_y, self.offset, self.fix_delay, self.obj_widths[self.size], self.cue_side, self.arrow_text[self.answer]]
                         if event.key == pygame.K_LEFT:
                             result.append('<')
                             if self.answer == 3:
@@ -198,9 +205,9 @@ class World(object):
                         if self.eg:
                             result.append(self.saccade_direction)
                             result.append(self.saccade_latency)
-                            self.output.write("%f\tEVENT_SYSTEM\tRESULT\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%s\t%s\t%s\t%d\t%f\t%s\t%d\n" % tuple(result))
+                            self.output.write("%f\tEVENT_SYSTEM\tRESULT\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%s\t%s\t%s\t%d\t%f\t%s\t%d\n" % tuple(result))
                         else:
-                            self.output.write("%f\tEVENT_SYSTEM\tRESULT\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%s\t%s\t%s\t%d\t%f\n" % tuple(result))
+                            self.output.write("%f\tEVENT_SYSTEM\tRESULT\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%s\t%s\t%s\t%d\t%f\n" % tuple(result))
                         self.output.write("%f\tEVENT_SYSTEM\tTRIAL_END\n" % (time.clock()))
                         self.accuracy.append(result)
             elif event.type == self.EVENT_HIDE_FIX:
@@ -293,6 +300,18 @@ class World(object):
             self.cue_side = 'right'
         self.trial += 1
 
+    def showPauseScreen(self):
+        ifont1 = pygame.font.Font(None, 34)
+        self.bgcolor = (0,0,0)
+        self.clear()
+        self.draw_text('Take a moment to relax your eyes!', ifont1, (255,255,255), (self.center_x,self.center_y - 40))
+        self.draw_text('Press any key to continue when ready...', ifont1, (255,255,255), (self.center_x,self.center_y))
+        self.update_world()
+        while (True):
+            for event in pygame.event.get():
+                if event.type == pygame.KEYDOWN:
+                    return
+
     def show_intro(self):
         ifont1 = pygame.font.Font(None, 34)
         ifont2 = pygame.font.Font(None, 24)
@@ -314,15 +333,21 @@ class World(object):
         if self.eg:
             self.state = -2
         if self.eg:
-            self.output.write('clock\tevent_type\tevent_details\ttrial\tmode\tcenter_x\tcenter_y\toffset\tfix_delay\tcue_size\tcue_side\ttarget\tresponse\tcorrect\trt\t1st_saccade_direction\t1st_saccade_latency\tgaze_found\ttimestamp\ttrial_time\tgaze_x\tgaze_y\n')
+            self.output.write('clock\tevent_type\tevent_details\ttrial\tmode\tsetup\tcenter_x\tcenter_y\toffset\tfix_delay\tcue_size\tcue_side\ttarget\tresponse\tcorrect\trt\t1st_saccade_direction\t1st_saccade_latency\tgaze_found\ttimestamp\ttrial_time\tgaze_x\tgaze_y\n')
         else:
-            self.output.write('clock\tevent_type\tevent_details\ttrial\tmode\tcenter_x\tcenter_y\toffset\tfix_delay\tcue_size\tcue_side\ttarget\tresponse\tcorrect\trt\n')
+            self.output.write('clock\tevent_type\tevent_details\ttrial\tmode\tsetup\tcenter_x\tcenter_y\toffset\tfix_delay\tcue_size\tcue_side\ttarget\tresponse\tcorrect\trt\n')
         while True:
             if self.state == -2:
                 self.eg.calibrate(self.screen)
                 self.state = -1
                 self.eg.data_start()
             elif self.state == 0:
+                if self.trial == self.lastTrial:
+                    if len(self.accuracy)>0:
+                        self.do_stats()
+                    self.cleanup()
+                elif self.trial > 0 and self.trial % self.blockLength == 0:
+                    self.showPauseScreen()
                 self.generate_trial()
                 self.output.write("%f\tEVENT_SYSTEM\tTRIAL_START\n" % (time.clock()))
                 if self.eg:
@@ -390,7 +415,7 @@ if __name__ == '__main__':
     parser.add_argument('-a', '--arrowsize', action="store", dest="arrowsize", default=0.07, help='Arrow size in terms of fraction of screen height.')
     parser.add_argument('-m', '--mode', action="store", dest="mode", default='random', help='Run in pro-saccade mode instead of anti-saccade mode.')
     parser.add_argument('-b', '--balanced', action="store_true", dest="balanced", help='Counter-balance trials.')
-    parser.add_argument('-B', '--blocks', action="store", dest="blocks", default=8, help='Number of blocks to run in balanced mode.')
+    parser.add_argument('-B', '--blocks', action="store", dest="blocks", default=12, help='Number of blocks to run in balanced mode.')
     parser.add_argument('-D', '--logdir', action="store", dest="logdir", default='data', help='Log dir')
     parser.add_argument('-n', '--nogap', action="store_true", dest="nogap", help="Don't do gap trials")
     parser.add_argument('-c', '--color', action="store_true", dest="color", help='Set to switch anti/pro bg colors.')
