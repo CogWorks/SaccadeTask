@@ -141,20 +141,20 @@ class World(object):
         if self.trial_start != 0 and self.trial_stop == 0:
             if self.trial_start == -1:
                 self.trial_start = eg_data.timestamp
-            result = [time.clock(), self.trial,self.mode_text, self.center_x, self.center_y,
+            result = [time.time(), self.trial,self.mode_text, self.center_x, self.center_y,
                       self.offset, self.fix_delay, self.obj_widths[self.size],
                       self.cue_side, self.arrow_text[self.answer],eg_data.gaze_found,eg_data.timestamp,
                       eg_data.timestamp-self.trial_start,int(eg_data.gaze_x),int(eg_data.gaze_y)]
             self.output.write("%f\tEVENT_LC\tSAMPLE_IN\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%s\t%s\t\t\t\t\t\t%d\t%f\t%f\t%d\t%d\n" % tuple(result))
         else:
-            result = [time.clock(), self.trial,self.mode_text, self.center_x, self.center_y,
+            result = [time.time(), self.trial,self.mode_text, self.center_x, self.center_y,
                       self.offset, self.fix_delay, self.obj_widths[self.size],
                       self.cue_side, self.arrow_text[self.answer],eg_data.gaze_found,eg_data.timestamp,
                       eg_data.timestamp-self.trial_start,int(eg_data.gaze_x),int(eg_data.gaze_y)]
             self.output.write("%f\tEVENT_LC\tSAMPLE_OUT\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%s\t%s\t\t\t\t\t\t%d\t%f\t%f\t%d\t%d\n" % tuple(result))
         if self.cue_time > 0:
             if eg_data.eye_motion_state == 2 and self.saccade_latency == 0:
-                self.saccade_latency = time.clock() - self.cue_time
+                self.saccade_latency = time.time() - self.cue_time
             elif self.saccade_latency > 0 and self.saccade_direction == 'none':
                 if eg_data.gaze_x < self.center_x:
                     self.saccade_direction = 'left'
@@ -179,8 +179,8 @@ class World(object):
                 elif self.state == 5:
                     if event.key == pygame.K_LEFT or event.key == pygame.K_UP or event.key == pygame.K_RIGHT:
                         self.trial_stop = -1
-                        rt = time.clock() - self.target_time
-                        result = [time.clock(), self.trial, self.mode_text, self.colorSetup, self.center_x, self.center_y, self.offset, self.fix_delay, self.obj_widths[self.size], self.cue_side, self.arrow_text[self.answer]]
+                        rt = time.time() - self.target_time
+                        result = [time.time(), self.trial, self.mode_text, self.colorSetup, self.center_x, self.center_y, self.offset, self.fix_delay, self.obj_widths[self.size], self.cue_side, self.arrow_text[self.answer]]
                         if event.key == pygame.K_LEFT:
                             result.append('<')
                             if self.answer == 3:
@@ -200,7 +200,7 @@ class World(object):
                             else:
                                 result.append(0)
                         result.append(rt)
-                        self.trial_stop = time.clock()
+                        self.trial_stop = time.time()
                         self.state = 0
                         if self.eg:
                             result.append(self.saccade_direction)
@@ -208,30 +208,30 @@ class World(object):
                             self.output.write("%f\tEVENT_SYSTEM\tRESULT\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%s\t%s\t%s\t%d\t%f\t%s\t%d\n" % tuple(result))
                         else:
                             self.output.write("%f\tEVENT_SYSTEM\tRESULT\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%s\t%s\t%s\t%d\t%f\n" % tuple(result))
-                        self.output.write("%f\tEVENT_SYSTEM\tTRIAL_END\n" % (time.clock()))
+                        self.output.write("%f\tEVENT_SYSTEM\tTRIAL_END\n" % (time.time()))
                         self.accuracy.append(result)
             elif event.type == self.EVENT_HIDE_FIX:
-                self.output.write("%f\tEVENT_SYSTEM\tHIDE_FIX\n" % (time.clock()))
+                self.output.write("%f\tEVENT_SYSTEM\tHIDE_FIX\n" % (time.time()))
                 pygame.time.set_timer(self.EVENT_HIDE_FIX, 0)
                 self.show_fix = False
             elif event.type == self.EVENT_SHOW_CUE:
-                self.output.write("%f\tEVENT_SYSTEM\tSHOW_CUE\n" % (time.clock()))
+                self.output.write("%f\tEVENT_SYSTEM\tSHOW_CUE\n" % (time.time()))
                 pygame.time.set_timer(self.EVENT_SHOW_CUE, 0)
                 self.state = 3
                 pygame.time.set_timer(self.EVENT_SHOW_ARROW, 400)
-                self.cue_time = time.clock()
+                self.cue_time = time.time()
                 self.trial_start = -1
             elif event.type == self.EVENT_SHOW_ARROW:
-                self.output.write("%f\tEVENT_SYSTEM\tSHOW_ARROW\n" % (time.clock()))
+                self.output.write("%f\tEVENT_SYSTEM\tSHOW_ARROW\n" % (time.time()))
                 pygame.time.set_timer(self.EVENT_SHOW_ARROW, 0)
                 self.state = 4
                 pygame.time.set_timer(self.EVENT_SHOW_MASK, 150)
-                self.target_time = time.clock()
+                self.target_time = time.time()
             elif event.type == self.EVENT_SHOW_MASK:
-                self.output.write("%f\tEVENT_SYSTEM\tSHOW_MASK\n" % (time.clock()))
+                self.output.write("%f\tEVENT_SYSTEM\tSHOW_MASK\n" % (time.time()))
                 pygame.time.set_timer(self.EVENT_SHOW_MASK, 0)
                 self.state = 5
-		self.mask_time = time.clock()
+		self.mask_time = time.time()
         return ret
 
     def draw_fix(self):
@@ -349,7 +349,7 @@ class World(object):
                 elif self.trial > 0 and self.trial % self.blockLength == 0:
                     self.showPauseScreen()
                 self.generate_trial()
-                self.output.write("%f\tEVENT_SYSTEM\tTRIAL_START\n" % (time.clock()))
+                self.output.write("%f\tEVENT_SYSTEM\tTRIAL_START\n" % (time.time()))
                 if self.eg:
                     self.state = 1
                 else:
@@ -379,7 +379,7 @@ class World(object):
                     xdiff = abs(self.eg.fix_data.fix_x-self.center_x)
                     ydiff = abs(self.eg.fix_data.fix_y-self.center_y)
                     if xdiff > self.center_y / 16 or ydiff > self.center_y / 16:
-                        self.output.write("%f\tEVENT_SYSTEM\tTRIAL_RESET\n" % (time.clock()))
+                        self.output.write("%f\tEVENT_SYSTEM\tTRIAL_RESET\n" % (time.time()))
                         #sys.stderr.write('False start, resetting trial.\n')
                         pygame.time.set_timer(self.EVENT_SHOW_CUE, 0)
                         pygame.time.set_timer(self.EVENT_HIDE_FIX, 0)
@@ -388,7 +388,7 @@ class World(object):
                         self.fix_shape = u'\u25CB'
                         self.show_fix = True
                 elif not self.eg.eg_data.gaze_found:
-                    self.output.write("%f\tEVENT_SYSTEM\tTRIAL_RESET\n" % (time.clock()))
+                    self.output.write("%f\tEVENT_SYSTEM\tTRIAL_RESET\n" % (time.time()))
                     #sys.stderr.write('Lost gaze, resetting trial.\n')
                     pygame.time.set_timer(self.EVENT_SHOW_CUE, 0)
                     pygame.time.set_timer(self.EVENT_HIDE_FIX, 0)
