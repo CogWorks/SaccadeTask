@@ -362,7 +362,7 @@ class World(object):
                 if self.eg.fix_data:
                     xdiff = abs(self.eg.fix_data.fix_x-self.center_x)
                     ydiff = abs(self.eg.fix_data.fix_y-self.center_y)
-                    if xdiff <= self.center_y / 16 and ydiff <= self.center_y / 16:
+                    if xdiff <= 100 and ydiff <= 100:
                         self.fix_color = (0,255,0)
                         self.fix_shape = u'\u25C9'
                         if self.eg.fix_data.fix_duration > 0: # Means at least 100ms
