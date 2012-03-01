@@ -15,13 +15,12 @@ from twisted.internet import reactor
 from twisted.internet.task import LoopingCall
 from pycogworks.fixation import FixationProcessor
 sys.path.append( "PyViewX" )
-from PyViewX.client import iViewXClient
-from panglery import Pangler
+from pyviewx import iViewXClient, Dispatcher
 
 class World( object ):
 	"""Task Environment"""
 
-	pangler = Pangler()
+	d = Dispatcher()
 
 	def __init__( self, args, subjectInfo ):
 		super( World, self ).__init__()
@@ -68,7 +67,7 @@ class World( object ):
 				self.output = sys.stdout
 
 		if self.args.eyetracker:
-			self.client = iViewXClient( self.pangler, self.args.eyetracker, 4444 )
+			self.client = iViewXClient( self.d, self.args.eyetracker, 4444 )
 			self.fp = FixationProcessor( 3.55, sample_rate = 500 )
 			self.calibrationPoints = []
 			self.currentPoint = -1
@@ -147,46 +146,46 @@ class World( object ):
 		self.screen.blit( self.worldsurf, self.worldsurf_rect )
 		pygame.display.flip()
 
-	@pangler.subscribe( event = 'ET_CAL', needs = ['data'] )
-	def iViewXEvent( self, p, event = None, data = None ):
-		self.calibrationPoints = [None] * int( data[0] )
+	@d.listen( 'ET_CAL' )
+	def iViewXEvent( self, inSender, inEvent, inResponse ):
+		self.calibrationPoints = [None] * int( inResponse[0] )
 
-	@pangler.subscribe( event = 'ET_CSZ', needs = ['data'] )
-	def iViewXEvent( self, p, event = None, data = None ):
+	@d.listen( 'ET_CSZ' )
+	def iViewXEvent( self, inSender, inEvent, inResponse ):
 		pass#mode = -2
 
-	@pangler.subscribe( event = 'ET_PNT', needs = ['data'] )
-	def iViewXEvent( self, p, event = None, data = None ):
-		self.calibrationPoints[int( data[0] ) - 1] = ( int( data[1] ), int( data[2] ) )
+	@d.listen( 'ET_PNT' )
+	def iViewXEvent( self, inSender, inEvent, inResponse ):
+		self.calibrationPoints[int( inResponse[0] ) - 1] = ( int( inResponse[1] ), int( inResponse[2] ) )
 
-	@pangler.subscribe( event = 'ET_CHG', needs = ['data'] )
-	def iViewXEvent( self, p, event = None, data = None ):
-		self.currentPoint = int( data[0] ) - 1
+	@d.listen( 'ET_CHG' )
+	def iViewXEvent( self, inSender, inEvent, inResponse ):
+		self.currentPoint = int( inResponse[0] ) - 1
 
-	@pangler.subscribe( event = 'ET_FIN', needs = ['data'] )
-	def iViewXEvent( self, p, event = None, data = None ):
+	@d.listen( 'ET_FIN' )
+	def iViewXEvent( self, inSender, inEvent, inResponse ):
 		self.state = -1
 		self.client.startDataStreaming()
 
-	@pangler.subscribe( event = 'ET_SPL', needs = ['data'] )
-	def iViewXEvent( self, p, event = None, data = None ):
-		self.eye_position = map( float, data[10:] )
+	@d.listen( 'ET_SPL' )
+	def iViewXEvent( self, inSender, inEvent, inResponse ):
+		self.eye_position = map( float, inResponse[10:] )
 		if self.state < 0:
 			return
-		self.fix_data = self.fp.detect_fixation( int( float( data[4] ) ) > 0, float( data[2] ), float( data[4] ) )
+		self.fix_data = self.fp.detect_fixation( int( float( inResponse[4] ) ) > 0, float( inResponse[2] ), float( inResponse[4] ) )
 		if self.trial_start != 0 and self.trial_stop == 0:
 			if self.trial_start == -1:
-				self.trial_start = int( data[0] )
+				self.trial_start = int( inResponse[0] )
 			result = [time.time(), self.trial, self.mode_text, self.center_x, self.center_y,
 					  self.offset, self.fix_delay, self.obj_widths[self.size],
-					  self.cue_side, self.arrow_text[self.answer], self.fix_data.gaze_found, int( data[0] ),
-					  int( data[0] ) - self.trial_start, int( self.fix_data.gaze_x ), int( self.fix_data.gaze_y )]
+					  self.cue_side, self.arrow_text[self.answer], self.fix_data.gaze_found, int( inResponse[0] ),
+					  int( inResponse[0] ) - self.trial_start, int( self.fix_data.gaze_x ), int( self.fix_data.gaze_y )]
 			self.output.write( "%f\tEVENT_SMI\tSAMPLE_IN\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%s\t%s\t\t\t\t\t\t%d\t%d\t%d\t%d\t%d\n" % tuple( result ) )
 		else:
 			result = [time.time(), self.trial, self.mode_text, self.center_x, self.center_y,
 					  self.offset, self.fix_delay, self.obj_widths[self.size],
-					  self.cue_side, self.arrow_text[self.answer], self.fix_data.gaze_found, int( data[0] ),
-					  int( data[0] ) - self.trial_start, int( self.fix_data.gaze_x ), int( self.fix_data.gaze_y )]
+					  self.cue_side, self.arrow_text[self.answer], self.fix_data.gaze_found, int( inResponse[0] ),
+					  int( inResponse[0] ) - self.trial_start, int( self.fix_data.gaze_x ), int( self.fix_data.gaze_y )]
 			self.output.write( "%f\tEVENT_SMI\tSAMPLE_OUT\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%s\t%s\t\t\t\t\t\t%d\t%d\t%d\t%d\t%d\n" % tuple( result ) )
 		if self.cue_time > 0:
 			if self.fix_data.eye_motion_state == 2 and self.saccade_latency == 0:
