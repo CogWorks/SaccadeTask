@@ -312,7 +312,7 @@ class World( object ):
 				t_rect.centerx = self.center_x
 				t_rect.centery = self.center_y
 				self.worldsurf.blit( t, t_rect )
-				if self.calibrationResults[1]:
+				if len( self.calibrationResults ) > 1:
 					t = f.render( ' '.join( self.calibrationResults[1] ), True, ( 255, 255, 255 ) )
 					t_rect = t.get_rect()
 					t_rect.centerx = self.center_x
