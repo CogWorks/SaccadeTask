@@ -71,6 +71,7 @@ class World( object ):
 			self.fp = FixationProcessor( 3.55, sample_rate = 500 )
 			self.calibrationPoints = []
 			self.currentPoint = -1
+			self.calibrationResults = []
 
 		pygame.mouse.set_visible( False )
 		if self.args.fullscreen:
@@ -162,10 +163,19 @@ class World( object ):
 	def iViewXEvent( self, inSender, inEvent, inResponse ):
 		self.currentPoint = int( inResponse[0] ) - 1
 
+	@d.listen( 'ET_VLS' )
+	def iViewXEvent( self, inSender, inEvent, inResponse ):
+		self.calibrationResults.append( inResponse )
+
+	@d.listen( 'ET_CSP' )
+	def iViewXEvent( self, inSender, inEvent, inResponse ):
+		pass
+
 	@d.listen( 'ET_FIN' )
 	def iViewXEvent( self, inSender, inEvent, inResponse ):
-		self.state = -1
-		self.client.startDataStreaming()
+		self.state = -2
+		self.client.requestCalibrationResults()
+		self.client.validateCalibrationAccuracy()
 
 	@d.listen( 'ET_SPL' )
 	def iViewXEvent( self, inSender, inEvent, inResponse ):
@@ -206,12 +216,15 @@ class World( object ):
 						self.do_stats()
 					self.lc.stop()
 					return
-				if self.state == -2 and event.key == pygame.K_SPACE:
+				if self.state == -3 and event.key == pygame.K_SPACE:
 					self.client.acceptCalibrationPoint()
-				elif event.key == pygame.K_s:
-					pygame.image.save( self.screen, "screenshot%d.jpeg" % ( self.screenshot ) )
-					self.screenshot += 1
-					ret = False
+				elif self.state == -2:
+					if event.key == pygame.K_r:
+						self.calibrationResults = []
+						self.state = -3
+						self.client.startCalibration( 9 )
+					elif event.key == pygame.K_SPACE:
+						self.state = -1
 				elif self.state == -1:
 					self.state = 0
 				elif self.state == 5:
@@ -274,16 +287,42 @@ class World( object ):
 
 	def draw_calibration( self ):
 		self.worldsurf.fill( ( 51, 51, 153 ) )
-		if self.eye_position and self.eye_position[4] > 600 and self.eye_position[5] > 600 and self.eye_position[4] < 800 and self.eye_position[5] < 800:
-			left = ( self.eye_position[0] / 99.999 * self.center_x + self.center_x, self.eye_position[2] / -99.999 * self.center_y + self.center_y )
-			right = ( self.eye_position[1] / 99.999 * self.center_x + self.center_x, self.eye_position[3] / -99.999 * self.center_y + self.center_y )
-			l = int( ( 700 - self.eye_position[4] ) / 5 + 20 )
-			r = int( ( 700 - self.eye_position[5] ) / 5 + 20 )
-			pygame.draw.circle( self.worldsurf, ( 255, 255, 255 ), map( int, left ), l )
-			pygame.draw.circle( self.worldsurf, ( 255, 255, 255 ), map( int, right ), r )
-		if not self.currentPoint < 0:
-			pygame.draw.circle( self.worldsurf, ( 255, 255, 0 ), self.calibrationPoints[self.currentPoint], 8 )
-			pygame.draw.circle( self.worldsurf, ( 0, 0, 0 ), self.calibrationPoints[self.currentPoint], 2 )
+		if self.state == -3:
+			if self.eye_position and self.eye_position[4] > 600 and self.eye_position[5] > 600 and self.eye_position[4] < 800 and self.eye_position[5] < 800:
+				left = ( self.eye_position[0] / 99.999 * self.center_x + self.center_x, self.eye_position[2] / -99.999 * self.center_y + self.center_y )
+				right = ( self.eye_position[1] / 99.999 * self.center_x + self.center_x, self.eye_position[3] / -99.999 * self.center_y + self.center_y )
+				l = int( ( 700 - self.eye_position[4] ) / 5 + 20 )
+				r = int( ( 700 - self.eye_position[5] ) / 5 + 20 )
+				pygame.draw.circle( self.worldsurf, ( 255, 255, 255 ), map( int, left ), l )
+				pygame.draw.circle( self.worldsurf, ( 255, 255, 255 ), map( int, right ), r )
+			if not self.currentPoint < 0:
+				pygame.draw.circle( self.worldsurf, ( 255, 255, 0 ), self.calibrationPoints[self.currentPoint], 8 )
+				pygame.draw.circle( self.worldsurf, ( 0, 0, 0 ), self.calibrationPoints[self.currentPoint], 2 )
+		if self.state == -2:
+			f = pygame.font.Font( None, 28 )
+			if not self.calibrationResults:
+				t = f.render( 'Calculating calibration accuracy...', True, ( 255, 255, 255 ) )
+				t_rect = t.get_rect()
+				t_rect.centerx = self.center_x
+				t_rect.centery = self.center_y
+				self.worldsurf.blit( t, t_rect )
+			else:
+				t = f.render( ' '.join( self.calibrationResults[0] ), True, ( 255, 255, 255 ) )
+				t_rect = t.get_rect()
+				t_rect.centerx = self.center_x
+				t_rect.centery = self.center_y
+				self.worldsurf.blit( t, t_rect )
+				if self.calibrationResults[1]:
+					t = f.render( ' '.join( self.calibrationResults[1] ), True, ( 255, 255, 255 ) )
+					t_rect = t.get_rect()
+					t_rect.centerx = self.center_x
+					t_rect.centery = self.center_y + 30
+					self.worldsurf.blit( t, t_rect )
+				t = f.render( "Press 'R' to recalibrate, press 'Space Bar' to continue..." , True, ( 255, 255, 255 ) )
+				t_rect = t.get_rect()
+				t_rect.centerx = self.center_x
+				t_rect.centery = self.height - 60
+				self.worldsurf.blit( t, t_rect )
 
 	def draw_fix( self ):
 		if self.fix_data:
@@ -291,7 +330,7 @@ class World( object ):
 
 	def draw_world( self ):
 		self.clear()
-		if self.state == -2:
+		if self.state == -3 or self.state == -2:
 			self.draw_calibration()
 		elif self.state == -1:
 			self.show_intro()
@@ -443,9 +482,10 @@ class World( object ):
 	def run( self ):
 		self.state = -1
 		if self.args.eyetracker:
-			self.state = -2
+			self.state = -3
 			self.output.write( 'clock\tevent_type\tevent_details\ttrial\tmode\tsetup\tcenter_x\tcenter_y\toffset\tfix_delay\tcue_size\tcue_side\ttarget\tresponse\tcorrect\trt\t1st_saccade_direction\t1st_saccade_latency\tgaze_found\ttimestamp\ttrial_time\tgaze_x\tgaze_y\n' )
 			reactor.listenUDP( 5555, self.client )
+			reactor.callLater( 0, self.client.stopEyeVideoStreaming )
 			reactor.callLater( 0, self.client.setDataFormat, '%TS %ET %SX %SY %DX %DY %EX %EY %EZ' )
 			reactor.callLater( 0, self.client.startDataStreaming )
 			reactor.callLater( 0, self.client.setSizeCalibrationArea, self.width, self.height )
