@@ -288,11 +288,11 @@ class World( object ):
 	def draw_calibration( self ):
 		self.worldsurf.fill( ( 51, 51, 153 ) )
 		if self.state == -3:
-			if self.eye_position and self.eye_position[4] > 600 and self.eye_position[5] > 600 and self.eye_position[4] < 800 and self.eye_position[5] < 800:
+			if self.eye_position and self.eye_position[4] > 550 and self.eye_position[5] > 550 and self.eye_position[4] < 850 and self.eye_position[5] < 850:
 				left = ( self.eye_position[0] / 99.999 * self.center_x + self.center_x, self.eye_position[2] / -99.999 * self.center_y + self.center_y )
 				right = ( self.eye_position[1] / 99.999 * self.center_x + self.center_x, self.eye_position[3] / -99.999 * self.center_y + self.center_y )
-				l = int( ( 700 - self.eye_position[4] ) / 5 + 20 )
-				r = int( ( 700 - self.eye_position[5] ) / 5 + 20 )
+				l = int( ( 700 - self.eye_position[4] ) / 7 + 20 )
+				r = int( ( 700 - self.eye_position[5] ) / 7 + 20 )
 				pygame.draw.circle( self.worldsurf, ( 255, 255, 255 ), map( int, left ), l )
 				pygame.draw.circle( self.worldsurf, ( 255, 255, 255 ), map( int, right ), r )
 			if not self.currentPoint < 0:
