@@ -288,41 +288,33 @@ class World( object ):
 	def draw_calibration( self ):
 		self.worldsurf.fill( ( 51, 51, 153 ) )
 		if self.state == -3:
+			r = pygame.Rect( 0, 0, 0, 0 )
+			r.width = int( ( 40 * self.width ) / 100 )
+			r.height = int( ( 20 * self.height ) / 100 )
+			r.center = ( self.center_x, self.center_y )
+			pygame.draw.rect( self.worldsurf, ( 0, 0, 0 ), r, 1 )
+			f = pygame.font.Font( None, 18 )
 			if self.eye_position and self.eye_position[4] > 550 and self.eye_position[5] > 550 and self.eye_position[4] < 850 and self.eye_position[5] < 850:
-				left = ( self.eye_position[0] / 99.999 * self.center_x + self.center_x, self.eye_position[2] / -99.999 * self.center_y + self.center_y )
-				right = ( self.eye_position[1] / 99.999 * self.center_x + self.center_x, self.eye_position[3] / -99.999 * self.center_y + self.center_y )
+				left = map( int, ( self.eye_position[0] / 99.999 * self.center_x + self.center_x, self.eye_position[2] / -99.999 * self.center_y + self.center_y ) )
+				right = map( int, ( self.eye_position[1] / 99.999 * self.center_x + self.center_x, self.eye_position[3] / -99.999 * self.center_y + self.center_y ) )
 				l = int( ( 700 - self.eye_position[4] ) / 7 + 20 )
 				r = int( ( 700 - self.eye_position[5] ) / 7 + 20 )
-				pygame.draw.circle( self.worldsurf, ( 255, 255, 255 ), map( int, left ), l )
-				pygame.draw.circle( self.worldsurf, ( 255, 255, 255 ), map( int, right ), r )
+				pygame.draw.circle( self.worldsurf, ( 255, 255, 255 ), left, l )
+				pygame.draw.circle( self.worldsurf, ( 255, 255, 255 ), right, r )
+				self.draw_text( '%d' % int( self.eye_position[4] - 700 ), f, ( 0, 0, 0 ), left )
+				self.draw_text( '%d' % int( self.eye_position[5] - 700 ), f, ( 0, 0, 0 ), right )
 			if not self.currentPoint < 0:
 				pygame.draw.circle( self.worldsurf, ( 255, 255, 0 ), self.calibrationPoints[self.currentPoint], 8 )
 				pygame.draw.circle( self.worldsurf, ( 0, 0, 0 ), self.calibrationPoints[self.currentPoint], 2 )
 		if self.state == -2:
 			f = pygame.font.Font( None, 28 )
 			if not self.calibrationResults:
-				t = f.render( 'Calculating calibration accuracy...', True, ( 255, 255, 255 ) )
-				t_rect = t.get_rect()
-				t_rect.centerx = self.center_x
-				t_rect.centery = self.center_y
-				self.worldsurf.blit( t, t_rect )
+				self.draw_text( 'Calculating calibration accuracy...', f, ( 255, 255, 255 ), ( self.center_x, self.center_y ) )
 			else:
-				t = f.render( ' '.join( self.calibrationResults[0] ), True, ( 255, 255, 255 ) )
-				t_rect = t.get_rect()
-				t_rect.centerx = self.center_x
-				t_rect.centery = self.center_y
-				self.worldsurf.blit( t, t_rect )
+				self.draw_text( ' '.join( self.calibrationResults[0] ), f, ( 255, 255, 255 ), ( self.center_x, self.center_y ) )
 				if len( self.calibrationResults ) > 1:
-					t = f.render( ' '.join( self.calibrationResults[1] ), True, ( 255, 255, 255 ) )
-					t_rect = t.get_rect()
-					t_rect.centerx = self.center_x
-					t_rect.centery = self.center_y + 30
-					self.worldsurf.blit( t, t_rect )
-				t = f.render( "Press 'R' to recalibrate, press 'Space Bar' to continue..." , True, ( 255, 255, 255 ) )
-				t_rect = t.get_rect()
-				t_rect.centerx = self.center_x
-				t_rect.centery = self.height - 60
-				self.worldsurf.blit( t, t_rect )
+					self.draw_text( ' '.join( self.calibrationResults[1] ), f, ( 255, 255, 255 ), ( self.center_x, self.center_y + 30 ) )
+				self.draw_text( "Press 'R' to recalibrate, press 'Space Bar' to continue...", f, ( 255, 255, 255 ), ( self.center_x, self.height - 60 ) )
 
 	def draw_fix( self ):
 		if self.fix_data:
