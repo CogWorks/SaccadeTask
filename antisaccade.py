@@ -16,6 +16,7 @@ from twisted.internet.task import LoopingCall
 from pycogworks.fixation import FixationProcessor
 sys.path.append( "PyViewX" )
 from pyviewx import iViewXClient, Dispatcher
+from pyviewx.pygamesupport import Calibrator
 
 class World( object ):
 	"""Task Environment"""
@@ -66,13 +67,6 @@ class World( object ):
 			else:
 				self.output = sys.stdout
 
-		if self.args.eyetracker:
-			self.client = iViewXClient( self.d, self.args.eyetracker, 4444 )
-			self.fp = FixationProcessor( 3.55, sample_rate = 500 )
-			self.calibrationPoints = []
-			self.currentPoint = -1
-			self.calibrationResults = []
-
 		pygame.mouse.set_visible( False )
 		if self.args.fullscreen:
 			self.screen = pygame.display.set_mode( ( 0, 0 ), pygame.FULLSCREEN )
@@ -110,6 +104,12 @@ class World( object ):
 		self.size = self.cue_side = self.fix_delay = -1
 		self.answer = self.mask_time = self.cue_time = self.trial_stop = self.trial_start = 0
 
+		if self.args.eyetracker:
+			self.client = iViewXClient( self.args.eyetracker, 4444 )
+			self.client.addDispatcher( self.d )
+			self.fp = FixationProcessor( 3.55, sample_rate = 500 )
+			self.calibrator = Calibrator( self.client, self.screen, reactor = reactor )
+
 	def generateTrialPool( self, n ):
 		return sample( [1, 2, 3, 4] * n, 4 * n )
 
@@ -146,36 +146,6 @@ class World( object ):
 	def update_world( self ):
 		self.screen.blit( self.worldsurf, self.worldsurf_rect )
 		pygame.display.flip()
-
-	@d.listen( 'ET_CAL' )
-	def iViewXEvent( self, inSender, inEvent, inResponse ):
-		self.calibrationPoints = [None] * int( inResponse[0] )
-
-	@d.listen( 'ET_CSZ' )
-	def iViewXEvent( self, inSender, inEvent, inResponse ):
-		pass#mode = -2
-
-	@d.listen( 'ET_PNT' )
-	def iViewXEvent( self, inSender, inEvent, inResponse ):
-		self.calibrationPoints[int( inResponse[0] ) - 1] = ( int( inResponse[1] ), int( inResponse[2] ) )
-
-	@d.listen( 'ET_CHG' )
-	def iViewXEvent( self, inSender, inEvent, inResponse ):
-		self.currentPoint = int( inResponse[0] ) - 1
-
-	@d.listen( 'ET_VLS' )
-	def iViewXEvent( self, inSender, inEvent, inResponse ):
-		self.calibrationResults.append( inResponse )
-
-	@d.listen( 'ET_CSP' )
-	def iViewXEvent( self, inSender, inEvent, inResponse ):
-		pass
-
-	@d.listen( 'ET_FIN' )
-	def iViewXEvent( self, inSender, inEvent, inResponse ):
-		self.state = -2
-		self.client.requestCalibrationResults()
-		self.client.validateCalibrationAccuracy()
 
 	@d.listen( 'ET_SPL' )
 	def iViewXEvent( self, inSender, inEvent, inResponse ):
@@ -285,46 +255,13 @@ class World( object ):
 		self.mask_time = time.time()
 		return ret
 
-	def draw_calibration( self ):
-		self.worldsurf.fill( ( 51, 51, 153 ) )
-		if self.state == -3:
-			r = pygame.Rect( 0, 0, 0, 0 )
-			r.width = int( ( 40 * self.width ) / 100 )
-			r.height = int( ( 20 * self.height ) / 100 )
-			r.center = ( self.center_x, self.center_y )
-			pygame.draw.rect( self.worldsurf, ( 0, 0, 0 ), r, 1 )
-			f = pygame.font.Font( None, 18 )
-			if self.eye_position and self.eye_position[4] > 550 and self.eye_position[5] > 550 and self.eye_position[4] < 850 and self.eye_position[5] < 850:
-				left = map( int, ( self.eye_position[0] / 99.999 * self.center_x + self.center_x, self.eye_position[2] / -99.999 * self.center_y + self.center_y ) )
-				right = map( int, ( self.eye_position[1] / 99.999 * self.center_x + self.center_x, self.eye_position[3] / -99.999 * self.center_y + self.center_y ) )
-				l = int( ( 700 - self.eye_position[4] ) / 7 + 20 )
-				r = int( ( 700 - self.eye_position[5] ) / 7 + 20 )
-				pygame.draw.circle( self.worldsurf, ( 255, 255, 255 ), left, l )
-				pygame.draw.circle( self.worldsurf, ( 255, 255, 255 ), right, r )
-				self.draw_text( '%d' % int( self.eye_position[4] - 700 ), f, ( 0, 0, 0 ), left )
-				self.draw_text( '%d' % int( self.eye_position[5] - 700 ), f, ( 0, 0, 0 ), right )
-			if not self.currentPoint < 0:
-				pygame.draw.circle( self.worldsurf, ( 255, 255, 0 ), self.calibrationPoints[self.currentPoint], 8 )
-				pygame.draw.circle( self.worldsurf, ( 0, 0, 0 ), self.calibrationPoints[self.currentPoint], 2 )
-		if self.state == -2:
-			f = pygame.font.Font( None, 28 )
-			if not self.calibrationResults:
-				self.draw_text( 'Calculating calibration accuracy...', f, ( 255, 255, 255 ), ( self.center_x, self.center_y ) )
-			else:
-				self.draw_text( ' '.join( self.calibrationResults[0] ), f, ( 255, 255, 255 ), ( self.center_x, self.center_y ) )
-				if len( self.calibrationResults ) > 1:
-					self.draw_text( ' '.join( self.calibrationResults[1] ), f, ( 255, 255, 255 ), ( self.center_x, self.center_y + 30 ) )
-				self.draw_text( "Press 'R' to recalibrate, press 'Space Bar' to continue...", f, ( 255, 255, 255 ), ( self.center_x, self.height - 60 ) )
-
 	def draw_fix( self ):
 		if self.fix_data:
 			pygame.draw.circle( self.worldsurf, ( 0, 228, 0 ), ( int( self.fix_data.fix_x ), int( self.fix_data.fix_y ) ), 5, 0 )
 
 	def draw_world( self ):
 		self.clear()
-		if self.state == -3 or self.state == -2:
-			self.draw_calibration()
-		elif self.state == -1:
+		if self.state == -1:
 			self.show_intro()
 		elif self.state == 1 or self.state == 2:
 			self.draw_fixation_circle()
@@ -423,6 +360,7 @@ class World( object ):
 			self.generate_trial()
 			self.output.write( "%f\tEVENT_SYSTEM\tTRIAL_START\n" % ( time.time() ) )
 			if self.args.eyetracker:
+				self.fp.reset()
 				self.state = 1
 			else:
 				self.state = 2
@@ -471,26 +409,21 @@ class World( object ):
 		self.draw_world()
 		self.process_events()
 
-	def run( self ):
+	def start( self, lc ):
 		self.state = -1
-		if self.args.eyetracker:
-			self.state = -3
-			self.output.write( 'clock\tevent_type\tevent_details\ttrial\tmode\tsetup\tcenter_x\tcenter_y\toffset\tfix_delay\tcue_size\tcue_side\ttarget\tresponse\tcorrect\trt\t1st_saccade_direction\t1st_saccade_latency\tgaze_found\ttimestamp\ttrial_time\tgaze_x\tgaze_y\n' )
-			reactor.listenUDP( 5555, self.client )
-			reactor.callLater( 0, self.client.stopEyeVideoStreaming )
-			reactor.callLater( 0, self.client.setDataFormat, '%TS %ET %SX %SY %DX %DY %EX %EY %EZ' )
-			reactor.callLater( 0, self.client.startDataStreaming )
-			reactor.callLater( 0, self.client.setSizeCalibrationArea, self.width, self.height )
-			reactor.callLater( 0, self.client.setCalibrationParam, 1, 1 )
-			reactor.callLater( 0, self.client.setCalibrationParam, 2, 0 )
-			reactor.callLater( 0, self.client.setCalibrationParam, 3, 1 )
-			reactor.callLater( 0, self.client.setCalibrationCheckLevel, 3 )
-			reactor.callLater( 0, self.client.startCalibration, 9 )
-		else:
-			self.output.write( 'clock\tevent_type\tevent_details\ttrial\tmode\tsetup\tcenter_x\tcenter_y\toffset\tfix_delay\tcue_size\tcue_side\ttarget\tresponse\tcorrect\trt\n' )
 		self.lc = LoopingCall( self.refresh )
 		d = self.lc.start( 1.0 / 30 )
 		d.addCallbacks( self.cleanup )
+
+	def run( self ):
+		self.state = -2
+		if self.args.eyetracker:
+			reactor.listenUDP( 5555, self.client )
+			self.calibrator.start( self.start )
+			self.output.write( 'clock\tevent_type\tevent_details\ttrial\tmode\tsetup\tcenter_x\tcenter_y\toffset\tfix_delay\tcue_size\tcue_side\ttarget\tresponse\tcorrect\trt\t1st_saccade_direction\t1st_saccade_latency\tgaze_found\ttimestamp\ttrial_time\tgaze_x\tgaze_y\n' )
+		else:
+			self.output.write( 'clock\tevent_type\tevent_details\ttrial\tmode\tsetup\tcenter_x\tcenter_y\toffset\tfix_delay\tcue_size\tcue_side\ttarget\tresponse\tcorrect\trt\n' )
+			self.start( None )
 		reactor.run()
 
 	def cleanup( self, *args, **kwargs ):
