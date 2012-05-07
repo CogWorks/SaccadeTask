@@ -13,10 +13,9 @@ import os
 
 from twisted.internet import reactor
 from twisted.internet.task import LoopingCall
-from pycogworks.fixation import FixationProcessor
-sys.path.append( "PyViewX" )
 from pyviewx import iViewXClient, Dispatcher
 from pyviewx.pygamesupport import Calibrator
+from vel import VelocityFP
 
 class World( object ):
 	"""Task Environment"""
@@ -30,6 +29,7 @@ class World( object ):
 
 		self.lc = None
 		self.fix_data = None
+		self.samples = None
 		self.eye_position = None
 
 		self.colors = [( 204, 255, 102 ), ( 255, 153, 255 )]
@@ -107,7 +107,7 @@ class World( object ):
 		if self.args.eyetracker:
 			self.client = iViewXClient( self.args.eyetracker, 4444 )
 			self.client.addDispatcher( self.d )
-			self.fp = FixationProcessor( 3.55, sample_rate = 500 )
+			self.fp = VelocityFP()
 			self.calibrator = Calibrator( self.client, self.screen, reactor = reactor )
 
 	def generateTrialPool( self, n ):
@@ -152,26 +152,32 @@ class World( object ):
 		self.eye_position = map( float, inResponse[10:] )
 		if self.state < 0:
 			return
-		self.fix_data = self.fp.detect_fixation( int( float( inResponse[4] ) ) > 0, float( inResponse[2] ), float( inResponse[4] ) )
+		t = int( inResponse[0] )
+		x = float( inResponse[2] )
+		y = float( inResponse[4] )
+		ex = np.mean( ( float( inResponse[10] ), float( inResponse[11] ) ) )
+		ey = np.mean( ( float( inResponse[12] ), float( inResponse[13] ) ) )
+		ez = np.mean( ( float( inResponse[14] ), float( inResponse[15] ) ) )
+		dia = int( inResponse[6] ) > 0 and int( inResponse[7] ) > 0 and int( inResponse[8] ) > 0 and int( inResponse[9] ) > 0
+		self.fix_data, self.samples = self.fp.processData( t, dia, x, y, ex, ey, ez )
+
+		result = [time.time(), 'EVENT_SMI']
 		if self.trial_start != 0 and self.trial_stop == 0:
 			if self.trial_start == -1:
 				self.trial_start = int( inResponse[0] )
-			result = [time.time(), self.trial, self.mode_text, self.center_x, self.center_y,
-					  self.offset, self.fix_delay, self.obj_widths[self.size],
-					  self.cue_side, self.arrow_text[self.answer], self.fix_data.gaze_found, int( inResponse[0] ),
-					  int( inResponse[0] ) - self.trial_start, int( self.fix_data.gaze_x ), int( self.fix_data.gaze_y )]
-			self.output.write( "%f\tEVENT_SMI\tSAMPLE_IN\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%s\t%s\t\t\t\t\t\t%d\t%d\t%d\t%d\t%d\n" % tuple( result ) )
+			result.append('SAMPLE_IN')
 		else:
-			result = [time.time(), self.trial, self.mode_text, self.center_x, self.center_y,
-					  self.offset, self.fix_delay, self.obj_widths[self.size],
-					  self.cue_side, self.arrow_text[self.answer], self.fix_data.gaze_found, int( inResponse[0] ),
-					  int( inResponse[0] ) - self.trial_start, int( self.fix_data.gaze_x ), int( self.fix_data.gaze_y )]
-			self.output.write( "%f\tEVENT_SMI\tSAMPLE_OUT\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%s\t%s\t\t\t\t\t\t%d\t%d\t%d\t%d\t%d\n" % tuple( result ) )
+                        result.append('SAMPLE_OUT')
+                result = result + [self.trial, self.mode_text, self.center_x, self.center_y,
+                                   self.offset, self.fix_delay, self.obj_widths[self.size],
+                                   self.cue_side, self.arrow_text[self.answer], dia, t,
+                                   t - self.trial_start, x, y, ex, ey, ez]
+		self.output.write( '\t'.join(map(str,result)) + '\n' )
 		if self.cue_time > 0:
-			if self.fix_data.eye_motion_state == 2 and self.saccade_latency == 0:
+			if not self.fix_data and self.saccade_latency == 0:
 				self.saccade_latency = time.time() - self.cue_time
 			elif self.saccade_latency > 0 and self.saccade_direction == 'none':
-				if self.fix_data.gaze_x < self.center_x:
+				if x < self.center_x:
 					self.saccade_direction = 'left'
 				else:
 					self.saccade_direction = 'right'
@@ -201,7 +207,7 @@ class World( object ):
 					if event.key == pygame.K_LEFT or event.key == pygame.K_UP or event.key == pygame.K_RIGHT:
 						self.trial_stop = -1
 						rt = time.time() - self.target_time
-						result = [time.time(), self.trial, self.mode_text, self.colorSetup, self.center_x, self.center_y, self.offset, self.fix_delay, self.obj_widths[self.size], self.cue_side, self.arrow_text[self.answer]]
+						result = [time.time(), 'EVENT_SYSTEM', 'RESULT', self.trial, self.mode_text, self.colorSetup, self.center_x, self.center_y, self.offset, self.fix_delay, self.obj_widths[self.size], self.cue_side, self.arrow_text[self.answer]]
 						if event.key == pygame.K_LEFT:
 							result.append( '<' )
 							if self.answer == 3:
@@ -226,9 +232,7 @@ class World( object ):
 						if self.args.eyetracker:
 							result.append( self.saccade_direction )
 							result.append( self.saccade_latency )
-							self.output.write( "%f\tEVENT_SYSTEM\tRESULT\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%s\t%s\t%s\t%d\t%f\t%s\t%d\n" % tuple( result ) )
-						else:
-							self.output.write( "%f\tEVENT_SYSTEM\tRESULT\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%s\t%s\t%s\t%d\t%f\n" % tuple( result ) )
+                                                self.output.write( '\t'.join(map(str,result)) + '\n' )
 						self.output.write( "%f\tEVENT_SYSTEM\tTRIAL_END\n" % ( time.time() ) )
 						self.accuracy.append( result )
 			elif event.type == self.EVENT_HIDE_FIX:
@@ -257,7 +261,7 @@ class World( object ):
 
 	def draw_fix( self ):
 		if self.fix_data:
-			pygame.draw.circle( self.worldsurf, ( 0, 228, 0 ), ( int( self.fix_data.fix_x ), int( self.fix_data.fix_y ) ), 5, 0 )
+			pygame.draw.circle( self.worldsurf, ( 0, 228, 0 ), ( int( self.fix_data[0] ), int( self.fix_data[1] ) ), 5, 0 )
 
 	def draw_world( self ):
 		self.clear()
@@ -360,7 +364,6 @@ class World( object ):
 			self.generate_trial()
 			self.output.write( "%f\tEVENT_SYSTEM\tTRIAL_START\n" % ( time.time() ) )
 			if self.args.eyetracker:
-				self.fp.reset()
 				self.state = 1
 			else:
 				self.state = 2
@@ -370,12 +373,12 @@ class World( object ):
 					pygame.time.set_timer( self.EVENT_HIDE_FIX, self.fix_delay - 233 )
 		elif self.state == 1:
 			if self.fix_data:
-				xdiff = abs( self.fix_data.fix_x - self.center_x )
-				ydiff = abs( self.fix_data.fix_y - self.center_y )
+				xdiff = abs( self.fix_data[0] - self.center_x )
+				ydiff = abs( self.fix_data[1] - self.center_y )
 				if xdiff <= 100 and ydiff <= 100:
 					self.fix_color = ( 0, 255, 0 )
 					self.fix_shape = u'\u25C9'
-					if self.fix_data.fix_duration > 0: # Means at least 100ms
+					if self.samples > 50: # Means at least 100ms
 						self.state = 2
 						self.fix_delay = self.get_fixation_interval()
 						pygame.time.set_timer( self.EVENT_SHOW_CUE, self.fix_delay )
@@ -386,8 +389,8 @@ class World( object ):
 				self.fix_shape = u'\u25CB'
 		elif self.state == 2 and self.args.eyetracker:
 			if self.fix_data:
-				xdiff = abs( self.fix_data.fix_x - self.center_x )
-				ydiff = abs( self.fix_data.fix_y - self.center_y )
+				xdiff = abs( self.fix_data[0] - self.center_x )
+				ydiff = abs( self.fix_data[1] - self.center_y )
 				if xdiff > 100 or ydiff > 100:
 					self.output.write( "%f\tEVENT_SYSTEM\tTRIAL_RESET\n" % ( time.time() ) )
 					#sys.stderr.write('False start, resetting trial.\n')
@@ -397,7 +400,7 @@ class World( object ):
 					self.fix_color = ( 255, 0, 0 )
 					self.fix_shape = u'\u25CB'
 					self.show_fix = True
-			elif not self.fix_data.gaze_found:
+			"""else:
 				self.output.write( "%f\tEVENT_SYSTEM\tTRIAL_RESET\n" % ( time.time() ) )
 				#sys.stderr.write('Lost gaze, resetting trial.\n')
 				pygame.time.set_timer( self.EVENT_SHOW_CUE, 0 )
@@ -405,7 +408,7 @@ class World( object ):
 				self.state = 1
 				self.fix_color = ( 255, 0, 0 )
 				self.fix_shape = u'\u25CB'
-				self.show_fix = True
+				self.show_fix = True"""
 		self.draw_world()
 		self.process_events()
 
