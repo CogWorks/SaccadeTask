@@ -1,6 +1,0 @@
-[submodule "pycogworks"]
-	path = pycogworks
-	url = git@github.com:CogWorks/PyCogWorks.git
-[submodule "PyViewX"]
-	path = PyViewX
-	url = git@github.com:RyanHope/PyViewX
