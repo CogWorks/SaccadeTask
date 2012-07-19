@@ -11,12 +11,13 @@ import sys
 import time
 import os
 import platform
+import json
 
 from twisted.internet import reactor
 from twisted.internet.task import LoopingCall
 from pyviewx import iViewXClient, Dispatcher
 from pyviewx.pygamesupport import Calibrator
-from vel import VelocityFP
+from pyfixation import VelocityFP
 
 class World( object ):
     """Task Environment"""
@@ -180,15 +181,16 @@ class World( object ):
                 self.trial_start = int( inResponse[0] )
             result.append('SAMPLE_IN')
         else:
-        	result.append('SAMPLE_OUT')
-        	result = result + [self.trial, self.mode_text, self.center_x, self.center_y,
-                               self.offset, self.fix_delay, self.obj_widths[self.size],
-                               self.cue_side, self.arrow_text[self.answer], dia, t,
-                               t - self.trial_start, x, y, ex, ey, ez]
+            result.append('SAMPLE_OUT')
+        result = result + [self.trial, self.mode_text, self.center_x, self.center_y,
+                           self.offset, self.fix_delay, self.obj_widths[self.size],
+                           self.cue_side, self.arrow_text[self.answer], dia, t,
+                           t - self.trial_start, x, y, ex, ey, ez]
         self.output.write( '\t'.join(map(str,result)) + '\n' )
         if self.cue_time > 0:
             if not self.fix_data and self.saccade_latency == 0:
                 self.saccade_latency = time.time() - self.cue_time
+                print self.saccade_latency
             elif self.saccade_latency > 0 and self.saccade_direction == 'none':
                 if x < self.center_x:
                     self.saccade_direction = 'left'
@@ -427,7 +429,9 @@ class World( object ):
         self.draw_world()
         self.process_events()
 
-    def start( self, lc ):
+    def start( self, lc, results ):
+        if results:
+            self.output.write( "%f\tEVENT_SMI\tCALIBRATION_RESULTS\t'%s'\n" % ( time.time(), json.dumps(results, encoding="cp1252" ) ) )
         self.state = -1
         self.lc = LoopingCall( self.refresh )
         d = self.lc.start( 1.0 / 30 )
