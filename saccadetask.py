@@ -280,7 +280,7 @@ class Task(ColorLayer, pyglet.event.EventDispatcher):
         if director.settings['mode'] == 'Experiment':
             header += ["datestamp", "encrypted_rin"]
 
-        header += ["system_time", "mode", "trial", "state"]
+        header += ["system_time", "mode", "trial", "state", "screen_width", "screen_height"]
 
         if director.settings['eyetracker'] and self.client:
             self.smi_spl_header = [
@@ -293,7 +293,7 @@ class Task(ColorLayer, pyglet.event.EventDispatcher):
                 "smi_eyl", "smi_eyr",
                 "smi_ezl", "smi_ezr"
             ]
-            header += self.smi_spl_header + ["smi_fx", "smi_fy"]
+            header += self.smi_spl_header
 
         self.logger = Logger(header)
         self.tarfile = tarfile.open('data/%s.tar.gz' % director.settings['filebase'], mode='w:gz')
@@ -322,6 +322,10 @@ class Task(ColorLayer, pyglet.event.EventDispatcher):
 
     def calibration_ok(self):
         self.dispatch_event("stop_calibration")
+        if director.settings['eyetracker'] and self.client:
+            self.dispatch_event("hide_headposition")
+            self.client.addDispatcher(self.d)
+            self.client.startFixationProcessing()
         self.next_trial()
 
     def calibration_bad(self):
@@ -332,6 +336,8 @@ class Task(ColorLayer, pyglet.event.EventDispatcher):
 
     def on_exit(self):
         if isinstance(director.scene, TransitionScene): return
+        self.client.removeDispatcher(self.d)
+        self.client.stopFixationProcessing()
         self.logger.close(True)
         self.tarfile.close()
         super(Task, self).on_exit()
@@ -340,6 +346,10 @@ class Task(ColorLayer, pyglet.event.EventDispatcher):
         if self.current_trial == self.total_trials:
             director.scene.dispatch_event("show_intro_scene")
         else:
+            self.log_extra = {
+                'screen_width':self.screen[0],
+                'screen_height': self.screen[1]
+            }
             director.window.set_mouse_visible(False)
             for c in self.get_children():
                 self.remove(c)
@@ -371,14 +381,16 @@ class Task(ColorLayer, pyglet.event.EventDispatcher):
 
     @d.listen('ET_FIX')
     def iViewXEvent(self, inResponse):
-        eyedata = {}
-        eyedata.update(self.log_extra)
-        eyedata["smi_type"] = inResponse[0]
-        eyedata["smi_time"] = inResponse[1]
-        eyedata["smi_fx"] = inResponse[2]
-        eyedata["smi_fy"] = inResponse[3]
-        self.logger.write(system_time=get_time(), mode=director.settings['mode'], state=self.states[self.state],
-                          trial=self.current_trial, event_source="SMI", event_type="ET_FIX", **eyedata)
+        if abs(float(inResponse[2])-self.screen[0]/2) < 100 or abs(float(inResponse[3])-self.screen[1]/2) < 100:
+            if self.center_off in self.get_children():
+                self.remove(self.center_off)
+            if not self.center_on in self.get_children():
+                self.add(self.center_on)
+        else:
+            if self.center_on in self.get_children():
+                self.remove(self.center_on)
+            if not self.center_off in self.get_children():
+                self.add(self.center_off)
 
     @d.listen('ET_SPL')
     def iViewXEvent(self, inResponse):
@@ -397,15 +409,6 @@ class Task(ColorLayer, pyglet.event.EventDispatcher):
 
     def on_key_press(self, symbol, modifiers):
         if self.state <= self.STATE_CALIBRATE: return
-        if not director.settings['eyetracker']:
-            if self.state == self.STATE_FIXATE:
-                self.schedule_cue(random()*3)
-            elif self.state == self.STATE_RESPOND:
-                if symbol == key.LEFT:
-                    print("left")
-                elif symbol == key.RIGHT:
-                    print("right")
-                self.next_trial()
         if symbol == key.W and (modifiers & key.MOD_ACCEL):
             self.logger.close(True)
             self.tarfile.close()
@@ -513,17 +516,6 @@ class SaccadeTask(object):
 
         director.window.set_visible(True)
 
-    def actr_wait_connection(self):
-        self.actrScrim.setWaitConnection()
-        self.actrScrim.visible = True
-
-    def actr_wait_model(self):
-        self.actrScrim.setWaitModel()
-        self.actrScrim.visible = True
-
-    def actr_running(self):
-        self.actrScrim.visible = False
-
     def start_calibration(self, on_success, on_failure):
         self.calibrationLayer.on_success = on_success
         self.calibrationLayer.on_failure = on_failure
@@ -536,7 +528,8 @@ class SaccadeTask(object):
         self.taskScene.add(self.headpositionLayer, 3)
 
     def hide_headposition(self):
-        self.taskScene.remove(self.headpositionLayer)
+        if self.headpositionLayer in self.taskScene.get_children():
+            self.taskScene.remove(self.headpositionLayer)
 
     def eyetracker_listen(self, _):
         self.listener = reactor.listenUDP(int(director.settings['eyetracker_in_port']), self.client)
