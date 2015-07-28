@@ -16,15 +16,15 @@ def clamp(n, minn, maxn):
     return max(min(maxn, n), minn)
 
 class HeadPositionLayer(Layer):
-    
+
     d = Dispatcher()
-    
+
     def __init__(self, client):
         super(HeadPositionLayer, self).__init__()
         self.client = client
-        
+
         self.screen = director.get_window_size()
-        
+
         self.font = font.load('Cut Outs for 3D FX', 384)
         arrow1_img = self.font.get_glyphs("I")[0].get_texture(True)
         arrow1_img.anchor_x = 'center'
@@ -32,29 +32,29 @@ class HeadPositionLayer(Layer):
         arrow2_img = self.font.get_glyphs("J")[0].get_texture(True)
         arrow2_img.anchor_x = 'center'
         arrow2_img.anchor_y = 'center'
-        
+
         self.arrows = [Sprite(arrow1_img, position=(self.screen[0] / 2, self.screen[1] / 8 * 7), color=(255, 0, 0), opacity=0, scale=.75, rotation=270),
                        Sprite(arrow1_img, position=(self.screen[0] / 2, self.screen[1] / 8 * 7), color=(255, 0, 0), opacity=0, scale=.75, rotation=90),
                        Sprite(arrow1_img, position=(self.screen[0] / 8, self.screen[1] / 2), color=(255, 0, 0), opacity=0, scale=.75, rotation=0),
                        Sprite(arrow1_img, position=(self.screen[0] / 8 * 7, self.screen[1] / 2), color=(255, 0, 0), opacity=0, scale=.75, rotation=180),
                        Sprite(arrow2_img, position=(self.screen[0] / 2, self.screen[1] / 8), color=(255, 0, 0), opacity=0, scale=.75, rotation=90),
                        Sprite(arrow2_img, position=(self.screen[0] / 2, self.screen[1] / 8), color=(255, 0, 0), opacity=0, scale=.75, rotation=270)]
-        
+
         for arrow in self.arrows:
             self.add(arrow)
-            
+
         self.head = (0,0,0)
-        
+
     def on_enter(self):
         super(HeadPositionLayer, self).on_enter()
         if isinstance(director.scene, TransitionScene): return
         self.client.addDispatcher(self.d)
-        
+
     def on_exit(self):
         super(HeadPositionLayer, self).on_exit()
         if isinstance(director.scene, TransitionScene): return
         self.client.removeDispatcher(self.d)
-        
+
     @d.listen('ET_SPL')
     def iViewXEvent(self, inResponse):
         if len(inResponse) == 16:
@@ -62,9 +62,9 @@ class HeadPositionLayer(Layer):
             hx = clamp(round((eye_position[0] + eye_position[1]) / 2 / 99.999, 2), -1.0, 1.0)
             hy = clamp(round((eye_position[2] + eye_position[3]) / 2 / 99.999, 2), -1.0, 1.0)
             hz = clamp(round(((eye_position[4] + eye_position[5]) / 2 - 700) / 150.0, 2), -1.0, 1.0)
-            
+
             self.head = (hx, hy, hz)
-            
+
             if hy >= -.5 and hy <= .5:
                 self.arrows[0].opacity = 0
                 self.arrows[1].opacity = 0
@@ -80,7 +80,7 @@ class HeadPositionLayer(Layer):
                 self.arrows[1].opacity = 0
                 yellow = (1 - hy) * 255
                 self.arrows[0].color = (255, yellow, 0)
-                
+
             if hx >= -.5 and hx <= .5:
                 self.arrows[2].opacity = 0
                 self.arrows[3].opacity = 0
@@ -96,7 +96,7 @@ class HeadPositionLayer(Layer):
                 self.arrows[3].opacity = 0
                 yellow = (1 - hx) * 255
                 self.arrows[2].color = (255, yellow, 0)
-            
+
             if eye_position[4] != 0 and eye_position[5] != 0:
                 if hz >= -.5 and hz <= .5:
                     self.arrows[4].opacity = 0
@@ -113,13 +113,13 @@ class HeadPositionLayer(Layer):
                     self.arrows[5].opacity = 0
                     yellow = (1 - hz) * 255
                     self.arrows[4].color = (255, yellow, 0)
-        
+
 class CalibrationLayer(ColorLayer, event.EventDispatcher):
-    
+
     is_event_handler = True
-    
+
     d = Dispatcher()
-    
+
     STATE_REFUSED = -1
     STATE_INIT = 0
     STATE_CALIBRATE = 1
@@ -131,7 +131,7 @@ class CalibrationLayer(ColorLayer, event.EventDispatcher):
         self.client = client
         self.on_success = None
         self.on_failure = None
-        
+
         self.window = director.window.get_size()
         self.screen = director.get_window_size()
         self.center_x = self.screen[0] / 2
@@ -142,11 +142,11 @@ class CalibrationLayer(ColorLayer, event.EventDispatcher):
         circle_img = self.font.get_glyphs("E")[0].get_texture(True)
         circle_img.anchor_x = 'center'
         circle_img.anchor_y = 'center'
-        
+
         self.circle = Sprite(circle_img, color=(255, 255, 0), scale=1, opacity=0)
         self.spinner = Sprite(resource.image('spinner.png'), position=(self.screen[0] / 2, self.screen[1] / 2), color=(255, 255, 255))
 
-        
+
     def on_enter(self):
         super(CalibrationLayer, self).on_enter()
         if isinstance(director.scene, TransitionScene): return
@@ -154,12 +154,12 @@ class CalibrationLayer(ColorLayer, event.EventDispatcher):
         self.client.addDispatcher(self.d)
         self.reset()
         self.start()
-        
+
     def on_exit(self):
         super(CalibrationLayer, self).on_exit()
         if isinstance(director.scene, TransitionScene): return
         self.reset()
-        self.client.removeDispatcher(self.d)  
+        self.client.removeDispatcher(self.d)
 
     def init(self):
         self.ts = -1
@@ -168,14 +168,14 @@ class CalibrationLayer(ColorLayer, event.EventDispatcher):
         self.calibrationResults = []
         self.add(self.circle, z=1)
         self.state = self.STATE_INIT
-        
+
     def reset(self):
         self.client.cancelCalibration()
         for c in self.get_children():
             c.stop()
             self.remove(c)
         self.init()
-        
+
     def start(self):
         if self.state > self.STATE_REFUSED:
             self.dispatch_event("show_headposition")
@@ -206,7 +206,7 @@ class CalibrationLayer(ColorLayer, event.EventDispatcher):
             #self.reset()
             self.on_failure()
             return True
-    
+
     @d.listen('CONNECTION_REFUSED')
     def iViewXEvent(self, inResponse):
         self.state = self.STATE_REFUSED

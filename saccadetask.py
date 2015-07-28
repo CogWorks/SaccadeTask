@@ -431,6 +431,7 @@ class SaccadeTask(object):
         pyglet.resource.path.append('resources')
         pyglet.resource.reindex()
         pyglet.resource.add_font('DejaVuSansMono.ttf')
+        pyglet.resource.add_font('cutouts.ttf')
 
         director.set_show_FPS(False)
         director.init(fullscreen=True, caption=self.title, visible=True, resizable=True)
@@ -445,7 +446,7 @@ class SaccadeTask(object):
         director.window.push_handlers(Handler())
 
         director.settings = {'seed':'1',
-                             'eyetracker': False,
+                             'eyetracker': True,
                              'eyetracker_ip': '127.0.0.1',
                              'eyetracker_out_port': '4444',
                              'eyetracker_in_port': '5555',
@@ -453,6 +454,8 @@ class SaccadeTask(object):
                              'players': ['Human'],
                              'mode': 'Anti',
                              'modes': ['Anti', 'Pro']}
+        if 'EYE_TRACKER' in os.environ:
+            director.settings['eyetracker_ip'] = os.environ['EYE_TRACKER']
 
         self.client = None
 
@@ -485,12 +488,11 @@ class SaccadeTask(object):
         self.taskBackgroundLayer = TaskBackground()
         self.taskLayer = Task(self.client)
 
-        if self.client:
-            self.calibrationLayer = CalibrationLayer(self.client)
-            self.calibrationLayer.register_event_type('show_headposition')
-            self.calibrationLayer.register_event_type('hide_headposition')
-            self.calibrationLayer.push_handlers(self)
-            self.headpositionLayer = HeadPositionLayer(self.client)
+        self.calibrationLayer = CalibrationLayer(self.client)
+        self.calibrationLayer.register_event_type('show_headposition')
+        self.calibrationLayer.register_event_type('hide_headposition')
+        self.calibrationLayer.push_handlers(self)
+        self.headpositionLayer = HeadPositionLayer(self.client)
 
         self.taskLayer.register_event_type('new_trial')
         self.taskLayer.push_handlers(self.taskBackgroundLayer)
