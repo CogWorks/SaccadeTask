@@ -187,7 +187,7 @@ class CalibrationLayer(ColorLayer, event.EventDispatcher):
             self.client.setCalibrationParam(2, 0)
             self.client.setCalibrationParam(3, 1)
             self.client.setCalibrationCheckLevel(3)
-            self.client.startCalibration(9, 0)
+            self.client.startCalibration(2, 0)
 
     def on_key_press(self, symbol, modifiers):
         if symbol == key.SPACE:

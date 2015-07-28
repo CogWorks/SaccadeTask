@@ -269,6 +269,8 @@ class Task(ColorLayer, pyglet.event.EventDispatcher):
         self.state = self.STATE_INIT
         self.client = client
         self.trial_complete = False
+        self.fixation_count = 0
+        self.fixation = 0
 
     def on_enter(self):
         if isinstance(director.scene, TransitionScene): return
@@ -325,7 +327,7 @@ class Task(ColorLayer, pyglet.event.EventDispatcher):
         self.dispatch_event("hide_headposition")
         self.client.addDispatcher(self.d)
         self.next_trial()
-        self.client.startFixationProcessing()
+        self.client.startFixationProcessing(dispersion=150)
 
     def calibration_bad(self):
         self.dispatch_event("stop_calibration")
@@ -363,18 +365,28 @@ class Task(ColorLayer, pyglet.event.EventDispatcher):
 
     def show_queue(self):
         if self.state == self.STATE_FIXATING:
+            self.fixation = self.fixation_count
             self.remove(self.center_on)
             self.add(self.center_off)
-            if randint(0,1):
-                self.remove(self.left_off)
-                self.add(self.left_on)
-            else:
+            self.cue_side = randint(0,1)
+            if self.cue_side:
                 self.remove(self.right_off)
                 self.add(self.right_on)
+            else:
+                self.remove(self.left_off)
+                self.add(self.left_on)
             self.state = self.STATE_RESPOND
+
+    @d.listen('ET_EFX')
+    def iViewXEvent(self, inResponse):
+        if inResponse[0] == 'r': return
+        print('EFX', inResponse)
 
     @d.listen('ET_FIX')
     def iViewXEvent(self, inResponse):
+        if inResponse[0] == 'r': return
+        self.fixation_count += 1
+        print('FIX', inResponse)
         if self.state == self.STATE_FIXATE:
             if abs(float(inResponse[2])-self.screen[0]/2) < 100 or abs(float(inResponse[3])-self.screen[1]/2) < 100:
                 if self.center_off in self.get_children():
@@ -384,12 +396,22 @@ class Task(ColorLayer, pyglet.event.EventDispatcher):
                 self.state = self.STATE_FIXATING
                 reactor.callLater(2+2*random(), self.show_queue)
         elif self.state == self.STATE_FIXATING:
-            if not (abs(float(inResponse[2])-self.screen[0]/2) < 100 or abs(float(inResponse[3])-self.screen[1]/2) < 100):
+            if self.fixation_count > self.fixation and not (abs(float(inResponse[2])-self.screen[0]/2) < 100 or abs(float(inResponse[3])-self.screen[1]/2) < 100):
                 if self.center_on in self.get_children():
                     self.remove(self.center_on)
                 if not self.center_off in self.get_children():
                     self.add(self.center_off)
                 self.state = self.STATE_FIXATE
+        elif self.state == self.STATE_RESPOND:
+            if self.fixation_count > self.fixation:
+                correct = False
+                if self.cue_side and float(inResponse[2]) < self.screen[0]/2:
+                    correct = True
+                elif not self.cue_side and float(inResponse[2]) > self.screen[0]/2:
+                    correct = True
+                print(correct)
+                self.next_trial()
+
 
     @d.listen('ET_SPL')
     def iViewXEvent(self, inResponse):
