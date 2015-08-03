@@ -35,6 +35,7 @@ from odict import OrderedDict
 
 from pyviewx.client import iViewXClient, Dispatcher
 from calibrator import CalibrationLayer, HeadPositionLayer
+from pyfixation import VelocityFP
 
 from pycogworks.logging import get_time, Logger, writeHistoryFile, getDateTimeStamp
 from pycogworks.crypto import rin2id
@@ -269,8 +270,10 @@ class Task(ColorLayer, pyglet.event.EventDispatcher):
         self.state = self.STATE_INIT
         self.client = client
         self.trial_complete = False
-        self.fixation_count = 0
         self.fixation = 0
+        self.fixating = False
+        self.eyedata = None
+        self.fp = VelocityFP(self.screen[0],self.screen[1],473.76,296.1,500,39,45)
 
     def on_enter(self):
         if isinstance(director.scene, TransitionScene): return
@@ -300,12 +303,24 @@ class Task(ColorLayer, pyglet.event.EventDispatcher):
         self.logger = Logger(header)
         self.tarfile = tarfile.open('data/%s.tar.gz' % director.settings['filebase'], mode='w:gz')
 
-        self.left_off = Label(u'\u25CB', position=(self.width / 8, self.height / 2), font_name='DejaVu Sans Mono', font_size=24, color=(0, 0, 0, 255), anchor_x='center', anchor_y='center')
-        self.left_on = Label(u'\u25C9', position=(self.width / 8, self.height / 2), font_name='DejaVu Sans Mono', font_size=24, color=(0, 0, 0, 255), anchor_x='center', anchor_y='center')
-        self.center_off = Label(u'\u25CB', position=(self.width / 2, self.height / 2), font_name='DejaVu Sans Mono', font_size=24, color=(0, 0, 0, 255), anchor_x='center', anchor_y='center')
-        self.center_on = Label(u'\u25C9', position=(self.width / 2, self.height / 2), font_name='DejaVu Sans Mono', font_size=24, color=(0, 0, 0, 255), anchor_x='center', anchor_y='center')
-        self.right_off = Label(u'\u25CB', position=(7 * self.width / 8, self.height / 2), font_name='DejaVu Sans Mono', font_size=24, color=(0, 0, 0, 255), anchor_x='center', anchor_y='center')
-        self.right_on = Label(u'\u25C9', position=(7 * self.width / 8, self.height / 2), font_name='DejaVu Sans Mono', font_size=24, color=(0, 0, 0, 255), anchor_x='center', anchor_y='center')
+        self.font = 'DejaVu Sans Mono'
+
+        self.stimuli = [
+            u'\u25CB', # solid_circle
+            u'\u25CC', # dotted_circle
+            u'\u25C9' # fisheye
+        ]
+
+        self.positions = [
+            (1 * self.width / 8, self.height / 2),
+            (4 * self.width / 8, self.height / 2),
+            (7 * self.width / 8, self.height / 2)
+        ]
+
+        self.sprites = [[Label(s, position=p, font_name=self.font, font_size=24, color=(0, 0, 0, 255), anchor_x='center', anchor_y='center') for s in self.stimuli] for p in self.positions]
+
+        self.gaze = Label(u'\u25E6', position=(0,0), font_name=self.font, font_size=24, color=(255, 0, 0, 255), anchor_x='center', anchor_y='center')
+        self.add(self.gaze)
 
         self.reset_state()
         if director.settings['eyetracker']:
@@ -313,6 +328,11 @@ class Task(ColorLayer, pyglet.event.EventDispatcher):
             self.dispatch_event("start_calibration", self.calibration_ok, self.calibration_bad)
         else:
             self.next_trial()
+
+    def set_state(self, p, v):
+        for c in self.get_children():
+            if c in self.sprites[p]: self.remove(c)
+        self.add(self.sprites[p][v])
 
     def reset_state(self):
         s = int(director.settings['seed'])
@@ -327,7 +347,6 @@ class Task(ColorLayer, pyglet.event.EventDispatcher):
         self.dispatch_event("hide_headposition")
         self.client.addDispatcher(self.d)
         self.next_trial()
-        self.client.startFixationProcessing(dispersion=150)
 
     def calibration_bad(self):
         self.dispatch_event("stop_calibration")
@@ -338,7 +357,6 @@ class Task(ColorLayer, pyglet.event.EventDispatcher):
     def on_exit(self):
         if isinstance(director.scene, TransitionScene): return
         self.client.removeDispatcher(self.d)
-        self.client.stopFixationProcessing()
         self.logger.close(True)
         self.tarfile.close()
         super(Task, self).on_exit()
@@ -352,11 +370,9 @@ class Task(ColorLayer, pyglet.event.EventDispatcher):
                 'screen_height': self.screen[1]
             }
             director.window.set_mouse_visible(False)
-            for c in self.get_children():
-                self.remove(c)
-            self.add(self.left_off)
-            self.add(self.center_off)
-            self.add(self.right_off)
+            self.set_state(0,1)
+            self.set_state(1,1)
+            self.set_state(2,1)
             self.state = self.STATE_FIXATE
             self.current_trial += 1
 
@@ -365,7 +381,6 @@ class Task(ColorLayer, pyglet.event.EventDispatcher):
 
     def show_queue(self):
         if self.state == self.STATE_FIXATING:
-            self.fixation = self.fixation_count
             self.remove(self.center_on)
             self.add(self.center_off)
             self.cue_side = randint(0,1)
@@ -377,50 +392,52 @@ class Task(ColorLayer, pyglet.event.EventDispatcher):
                 self.add(self.left_on)
             self.state = self.STATE_RESPOND
 
-    @d.listen('ET_EFX')
-    def iViewXEvent(self, inResponse):
-        if inResponse[0] == 'r': return
-        print('EFX', inResponse)
-
-    @d.listen('ET_FIX')
-    def iViewXEvent(self, inResponse):
-        if inResponse[0] == 'r': return
-        self.fixation_count += 1
-        print('FIX', inResponse)
-        if self.state == self.STATE_FIXATE:
-            if abs(float(inResponse[2])-self.screen[0]/2) < 100 or abs(float(inResponse[3])-self.screen[1]/2) < 100:
-                if self.center_off in self.get_children():
-                    self.remove(self.center_off)
-                if not self.center_on in self.get_children():
-                    self.add(self.center_on)
-                self.state = self.STATE_FIXATING
-                reactor.callLater(2+2*random(), self.show_queue)
-        elif self.state == self.STATE_FIXATING:
-            if self.fixation_count > self.fixation and not (abs(float(inResponse[2])-self.screen[0]/2) < 100 or abs(float(inResponse[3])-self.screen[1]/2) < 100):
-                if self.center_on in self.get_children():
-                    self.remove(self.center_on)
-                if not self.center_off in self.get_children():
-                    self.add(self.center_off)
-                self.state = self.STATE_FIXATE
-        elif self.state == self.STATE_RESPOND:
-            if self.fixation_count > self.fixation:
-                correct = False
-                if self.cue_side and float(inResponse[2]) < self.screen[0]/2:
-                    correct = True
-                elif not self.cue_side and float(inResponse[2]) > self.screen[0]/2:
-                    correct = True
-                print(correct)
-                self.next_trial()
-
-
     @d.listen('ET_SPL')
     def iViewXEvent(self, inResponse):
         eyedata = {}
         eyedata.update(self.log_extra)
+        self.gaze.position = (float(inResponse[3]), float(inResponse[5]))
         for i, _ in enumerate(self.smi_spl_header):
             eyedata[self.smi_spl_header[i]] = inResponse[i]
         self.logger.write(system_time=get_time(), mode=director.settings['mode'], state=self.states[self.state],
                           trial=self.current_trial, event_source="SMI", event_type="ET_SPL", **eyedata)
+        fixating, data = self.fp.processData(float(inResponse[0]), float(inResponse[3]), float(inResponse[5]), float(inResponse[15]), float(inResponse[11]), float(inResponse[13]))
+        if fixating:
+            if self.state == self.STATE_FIXATE:
+                for p in range(0,len(self.positions)):
+                    va = self.fp.subtendedAngle(data[1], data[2], self.positions[p][0], self.positions[p][1], self.screen[0], self.screen[1], 473.76, 296.1, float(inResponse[15]), float(inResponse[11]), float(inResponse[13]))
+                    if va < 2:
+                        self.set_state(p, 2)
+                    else:
+                        self.set_state(p, 1)
+
+        #     if self.state == self.STATE_FIXATE:
+        #         if abs(data[1]-self.screen[0]/2) < 100 or abs(data[2]-self.screen[1]/2) < 100:
+        #             if self.center_off in self.get_children():
+        #                 self.remove(self.center_off)
+        #             if not self.center_on in self.get_children():
+        #                 self.add(self.center_on)
+        #             self.state = self.STATE_FIXATING
+        #             self.fixation = self.fp.nFixations
+        #             reactor.callLater(2+2*random(), self.show_queue)
+        #     elif self.state == self.STATE_RESPOND:
+        #         if self.fp.nFixations > self.fixation:
+        #             correct = False
+        #             if self.cue_side and float(inResponse[2]) < self.screen[0]/2:
+        #                 correct = True
+        #             elif not self.cue_side and float(inResponse[2]) > self.screen[0]/2:
+        #                 correct = True
+        #             print(correct)
+        #             self.state == self.STATE_FEEDBACK
+        #             reactor.callLater(.250, self.next_trial)
+        # else:
+        #     if self.state == self.STATE_FIXATING:
+        #         if self.center_on in self.get_children():
+        #             self.remove(self.center_on)
+        #         if not self.center_off in self.get_children():
+        #             self.add(self.center_off)
+        #         self.state = self.STATE_FIXATE
+
 
     def on_mouse_press(self, x, y, buttons, modifiers):
         pass

@@ -183,11 +183,12 @@ class CalibrationLayer(ColorLayer, event.EventDispatcher):
             self.client.setDataFormat('%TS %ET %SX %SY %DX %DY %EX %EY %EZ')
             self.client.startDataStreaming()
             self.client.setSizeCalibrationArea(self.window[0], self.window[1])
+            self.client.setCalibrationParam(0, 1)
             self.client.setCalibrationParam(1, 1)
-            self.client.setCalibrationParam(2, 0)
+            self.client.setCalibrationParam(2, 1)
             self.client.setCalibrationParam(3, 1)
             self.client.setCalibrationCheckLevel(3)
-            self.client.startCalibration(2, 0)
+            self.client.startCalibration(9, 2) #1=right,2=left
 
     def on_key_press(self, symbol, modifiers):
         if symbol == key.SPACE:
@@ -240,6 +241,7 @@ class CalibrationLayer(ColorLayer, event.EventDispatcher):
 
     @d.listen('ET_VLS')
     def iViewXEvent(self, inResponse):
+        print(inResponse)
         if self.state == self.STATE_VALIDATE:
             self.calibrationResults.append(' '.join(inResponse))
             if len(self.calibrationResults) == 2:
