@@ -68,6 +68,7 @@ class OptionsMenu(BetterMenu):
         self.items['fps'] = ToggleMenuItem('Show FPS:', self.on_show_fps, director.show_FPS)
         self.items['fullscreen'] = ToggleMenuItem('Fullscreen:', self.on_fullscreen, director.window.fullscreen)
         self.items['eyetracker'] = ToggleMenuItem("EyeTracker:", self.on_eyetracker, director.settings['eyetracker'])
+        self.items['eyetracker_calpoints'] = MultipleMenuItem('EyeTracker Calibration Points:', self.on_eyetracker_calpoints, director.settings['eyetracker_calpoint_modes'], director.settings['eyetracker_calpoint_modes'].index(director.settings['eyetracker_calpoints']))
         self.items['eyetracker_ip'] = EntryMenuItem('EyeTracker IP:', self.on_eyetracker_ip, director.settings['eyetracker_ip'])
         self.items['eyetracker_in_port'] = EntryMenuItem('EyeTracker In Port:', self.on_eyetracker_in_port, director.settings['eyetracker_in_port'])
         self.items['eyetracker_out_port'] = EntryMenuItem('EyeTracker Out Port:', self.on_eyetracker_out_port, director.settings['eyetracker_out_port'])
@@ -101,6 +102,9 @@ class OptionsMenu(BetterMenu):
 
     def on_experiment(self, value):
         director.settings['experiment'] = value
+
+    def on_eyetracker_calpoints(self, value):
+        director.settings['eyetracker_calpoints'] = director.settings['eyetracker_calpoint_modes'][value]
 
     def set_eyetracker_extras(self, value):
         self.items['eyetracker_ip'].visible = value
@@ -273,7 +277,7 @@ class Task(ColorLayer, pyglet.event.EventDispatcher):
         self.fixation = 0
         self.fixating = False
         self.eyedata = None
-        self.fp = VelocityFP(self.screen[0],self.screen[1],473.76,296.1,500,39,45)
+        self.fp = VelocityFP(self.screen[0],self.screen[1],473.76,296.1,500,21,45)
 
     def on_enter(self):
         if isinstance(director.scene, TransitionScene): return
@@ -396,12 +400,12 @@ class Task(ColorLayer, pyglet.event.EventDispatcher):
     def iViewXEvent(self, inResponse):
         eyedata = {}
         eyedata.update(self.log_extra)
-        self.gaze.position = (float(inResponse[3]), float(inResponse[5]))
         for i, _ in enumerate(self.smi_spl_header):
             eyedata[self.smi_spl_header[i]] = inResponse[i]
         self.logger.write(system_time=get_time(), mode=director.settings['mode'], state=self.states[self.state],
                           trial=self.current_trial, event_source="SMI", event_type="ET_SPL", **eyedata)
         fixating, data = self.fp.processData(float(inResponse[0]), float(inResponse[3]), float(inResponse[5]), float(inResponse[15]), float(inResponse[11]), float(inResponse[13]))
+        self.gaze.position = (float(data[1]), float(data[2]))
         if fixating:
             if self.state == self.STATE_FIXATE:
                 for p in range(0,len(self.positions)):
@@ -491,6 +495,8 @@ class SaccadeTask(object):
                              'eyetracker_ip': '127.0.0.1',
                              'eyetracker_out_port': '4444',
                              'eyetracker_in_port': '5555',
+                             'eyetracker_calpoints': '9',
+                             'eyetracker_calpoint_modes': ['2','5','9'],
                              'player': 'Human',
                              'players': ['Human'],
                              'mode': 'Anti',
@@ -555,6 +561,7 @@ class SaccadeTask(object):
         director.window.set_visible(True)
 
     def start_calibration(self, on_success, on_failure):
+        self.calibrationLayer.npoints = int(director.settings['eyetracker_calpoints'])
         self.calibrationLayer.on_success = on_success
         self.calibrationLayer.on_failure = on_failure
         self.taskScene.add(self.calibrationLayer, 2)

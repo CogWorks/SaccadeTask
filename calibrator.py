@@ -131,7 +131,12 @@ class CalibrationLayer(ColorLayer, event.EventDispatcher):
         self.client = client
         self.on_success = None
         self.on_failure = None
+        self.npoints = 9
 
+    def on_enter(self):
+        super(CalibrationLayer, self).on_enter()
+        if isinstance(director.scene, TransitionScene): return
+        director.window.set_mouse_visible(False)
         self.window = director.window.get_size()
         self.screen = director.get_window_size()
         self.center_x = self.screen[0] / 2
@@ -145,12 +150,6 @@ class CalibrationLayer(ColorLayer, event.EventDispatcher):
 
         self.circle = Sprite(circle_img, color=(255, 255, 0), scale=1, opacity=0)
         self.spinner = Sprite(resource.image('spinner.png'), position=(self.screen[0] / 2, self.screen[1] / 2), color=(255, 255, 255))
-
-
-    def on_enter(self):
-        super(CalibrationLayer, self).on_enter()
-        if isinstance(director.scene, TransitionScene): return
-        director.window.set_mouse_visible(False)
         self.client.addDispatcher(self.d)
         self.reset()
         self.start()
@@ -164,7 +163,7 @@ class CalibrationLayer(ColorLayer, event.EventDispatcher):
     def init(self):
         self.ts = -1
         self.eye_position = None
-        self.calibrationPoints = [None] * 9
+        self.calibrationPoints = [None] * self.npoints
         self.calibrationResults = []
         self.add(self.circle, z=1)
         self.state = self.STATE_INIT
@@ -185,10 +184,11 @@ class CalibrationLayer(ColorLayer, event.EventDispatcher):
             self.client.setSizeCalibrationArea(self.window[0], self.window[1])
             self.client.setCalibrationParam(0, 1)
             self.client.setCalibrationParam(1, 1)
-            self.client.setCalibrationParam(2, 1)
+            self.client.setCalibrationParam(2, 0) #autoaccept
             self.client.setCalibrationParam(3, 1)
             self.client.setCalibrationCheckLevel(3)
-            self.client.startCalibration(9, 2) #1=right,2=left
+            print(self.npoints)
+            self.client.startCalibration(self.npoints, 2) #1=right,2=left
 
     def on_key_press(self, symbol, modifiers):
         if symbol == key.SPACE:
