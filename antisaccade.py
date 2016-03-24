@@ -13,10 +13,12 @@ import os
 import platform
 import json
 
+import numpy as np
+
 from twisted.internet import reactor
 from twisted.internet.task import LoopingCall
-from pyviewx import iViewXClient, Dispatcher
-from pyviewx.pygamesupport import Calibrator
+from pyviewx.client import iViewXClient, Dispatcher
+from pyviewx.pygame import Calibrator
 from pyfixation import VelocityFP
 
 class World( object ):
@@ -35,8 +37,8 @@ class World( object ):
 
         self.lc = None
         self.fix_data = None
-        self.samples = None
         self.eye_position = None
+        self.fixating = False
         self.ret = 0
 
         self.colors = [( 204, 255, 102 ), ( 255, 153, 255 )]
@@ -118,11 +120,11 @@ class World( object ):
         self.size = self.cue_side = self.fix_delay = -1
         self.answer = self.mask_time = self.cue_time = self.trial_stop = self.trial_start = 0
 
-        if self.args.eyetracker:
+        if self.args.eyetracker and self.args.fullscreen:
             self.client = iViewXClient( self.args.eyetracker, 4444 )
             self.client.addDispatcher( self.d )
-            self.fp = VelocityFP()
-            self.calibrator = Calibrator( self.client, self.screen, reactor = reactor )
+            self.fp = VelocityFP(self.width, self.height, 473.76, 296.1, 500, 23, 45)
+            self.calibrator = Calibrator( self.client, self.screen, reactor = reactor)
 
     def generateTrialPool( self, n ):
         return sample( [1, 2, 3, 4] * n, 4 * n )
@@ -162,7 +164,7 @@ class World( object ):
         pygame.display.flip()
 
     @d.listen( 'ET_SPL' )
-    def iViewXEvent( self, inSender, inEvent, inResponse ):
+    def iViewXEvent( self, inResponse ):
         self.eye_position = map( float, inResponse[10:] )
         if self.state < 0:
             return
@@ -173,7 +175,7 @@ class World( object ):
         ey = np.mean( ( float( inResponse[12] ), float( inResponse[13] ) ) )
         ez = np.mean( ( float( inResponse[14] ), float( inResponse[15] ) ) )
         dia = int( inResponse[6] ) > 0 and int( inResponse[7] ) > 0 and int( inResponse[8] ) > 0 and int( inResponse[9] ) > 0
-        self.fix_data, self.samples = self.fp.processData( t, dia, x, y, ex, ey, ez )
+        self.fixating, self.fix_data = self.fp.processData( t, x, y, ex, ey, ez )
 
         result = [time.time(), 'EVENT_SMI']
         if self.trial_start != 0 and self.trial_stop == 0:
@@ -278,7 +280,7 @@ class World( object ):
 
     def draw_fix( self ):
         if self.fix_data:
-            pygame.draw.circle( self.worldsurf, ( 0, 228, 0 ), ( int( self.fix_data[0] ), int( self.fix_data[1] ) ), 5, 0 )
+            pygame.draw.circle( self.worldsurf, ( 0, 228, 0 ), ( int( self.fix_data[1] ), int( self.fix_data[2] ) ), 5, 0 )
 
     def draw_world( self ):
         self.clear()
@@ -389,13 +391,13 @@ class World( object ):
                 if not self.args.nogap:
                     pygame.time.set_timer( self.EVENT_HIDE_FIX, self.fix_delay - 233 )
         elif self.state == 1:
-            if self.fix_data:
-                xdiff = abs( self.fix_data[0] - self.center_x )
-                ydiff = abs( self.fix_data[1] - self.center_y )
+            if self.fixating:
+                xdiff = abs( self.fix_data[1] - self.center_x )
+                ydiff = abs( self.fix_data[2] - self.center_y )
                 if xdiff <= 100 and ydiff <= 100:
                     self.fix_color = ( 0, 255, 0 )
                     self.fix_shape = u'\u25C9'
-                    if self.samples > 50: # Means at least 100ms
+                    if self.fp.nSamples > 50: # Means at least 100ms
                         self.state = 2
                         self.fix_delay = self.get_fixation_interval()
                         pygame.time.set_timer( self.EVENT_SHOW_CUE, self.fix_delay )
@@ -406,8 +408,8 @@ class World( object ):
                 self.fix_shape = u'\u25CB'
         elif self.state == 2 and self.args.eyetracker:
             if self.fix_data:
-                xdiff = abs( self.fix_data[0] - self.center_x )
-                ydiff = abs( self.fix_data[1] - self.center_y )
+                xdiff = abs( self.fix_data[1] - self.center_x )
+                ydiff = abs( self.fix_data[2] - self.center_y )
                 if xdiff > 100 or ydiff > 100:
                     self.output.write( "%f\tEVENT_SYSTEM\tTRIAL_RESET\n" % ( time.time() ) )
                     #sys.stderr.write('False start, resetting trial.\n')
@@ -445,7 +447,7 @@ class World( object ):
             self.output.write( 'clock\tevent_type\tevent_details\ttrial\tmode\tsetup\tcenter_x\tcenter_y\toffset\tfix_delay\tcue_size\tcue_side\ttarget\tresponse\tcorrect\trt\t1st_saccade_direction\t1st_saccade_latency\tgaze_found\ttimestamp\ttrial_time\tgaze_x\tgaze_y\n' )
         else:
             self.output.write( 'clock\tevent_type\tevent_details\ttrial\tmode\tsetup\tcenter_x\tcenter_y\toffset\tfix_delay\tcue_size\tcue_side\ttarget\tresponse\tcorrect\trt\n' )
-            self.start( None )
+            self.start( None, None )
         reactor.run()
 
     def cleanup( self, *args, **kwargs ):
@@ -468,18 +470,13 @@ if __name__ == '__main__':
     parser.add_argument( '-s', '--subdir', action = "store_true", dest = "subdir", help = 'Place each subjects data in their own sub-directory.' )
     parser.add_argument( '-n', '--nogap', action = "store_true", dest = "nogap", help = "Don't do gap trials" )
     parser.add_argument( '-c', '--color', action = "store_true", dest = "color", help = 'Set to switch anti/pro bg colors.' )
-
-    try:
-        from pycogworks.eyegaze import *
-        parser.add_argument( '-e', '--eyetracker', action = "store", dest = "eyetracker", help = 'Use eyetracker.' )
-        parser.add_argument( '-f', '--fixation', action = "store_true", dest = "showfixation", help = 'Overlay fixation.' )
-    except ImportError:
-        pass
+    parser.add_argument( '-e', '--eyetracker', action = "store", dest = "eyetracker", help = 'Use eyetracker.' )
+    parser.add_argument( '-f', '--fixation', action = "store_true", dest = "showfixation", help = 'Overlay fixation.' )
 
     subjectInfo = False
     try:
-        import pycogworks.cwsubject as cwsubject
-        from pycogworks.util import rin2id
+        import pycogworks.gui.cwsubject as cwsubject
+        from pycogworks.crypto import rin2id
         parser.add_argument( '-S', '--subject', action = "store_true", dest = "subject", help = 'Get CogWorks subject info.' )
         subjectInfo = True
     except ImportError:
